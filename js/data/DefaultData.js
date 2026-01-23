@@ -70,6 +70,61 @@ const DEFAULT_DATA = {
       reward: 50,
       width: 64,
       height: 64
+    },
+    {
+      id: "bomber",
+      name: "ボマー",
+      hp: 20,
+      speed: 80,
+      reward: 25,
+      width: 40,
+      height: 40,
+      color: 0xFF6600,
+      special: "explode_wall"
+    },
+    {
+      id: "shield",
+      name: "シールド型",
+      hp: 15,
+      speed: 100,
+      reward: 35,
+      width: 20,
+      height: 20,
+      color: 0x00FFFF,
+      special: "shield_once"
+    },
+    {
+      id: "spawner",
+      name: "スポナー",
+      hp: 40,
+      speed: 50,
+      reward: 40,
+      width: 48,
+      height: 48,
+      color: 0x9900FF,
+      special: "spawn_on_death"
+    },
+    {
+      id: "stealth",
+      name: "ステルス型",
+      hp: 12,
+      speed: 120,
+      reward: 30,
+      width: 20,
+      height: 20,
+      color: 0x888888,
+      special: "stealth"
+    },
+    {
+      id: "dasher",
+      name: "ダッシュ型",
+      hp: 25,
+      speed: 80,
+      reward: 30,
+      width: 32,
+      height: 32,
+      color: 0xFFFF00,
+      special: "dash"
     }
   ],
 
@@ -119,8 +174,7 @@ const DEFAULT_DATA = {
         { enemies: "bug_small:5", spawnInterval: 1500, directions: ["right"] },
         { enemies: "bug_small:8", spawnInterval: 1200, directions: ["right"] },
         { enemies: "bug_small:6,bug_medium:2", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "bug_medium:4,bug_small:6", spawnInterval: 1000, directions: ["right", "top"] },
-        { enemies: "bug_medium:5,worm:3", spawnInterval: 1000, directions: ["right", "top", "bottom"] }
+        { enemies: "bug_medium:4,bug_small:6", spawnInterval: 1000, directions: ["right", "top"] }
       ]
     },
     {
@@ -132,8 +186,7 @@ const DEFAULT_DATA = {
         { enemies: "bug_small:10", spawnInterval: 1200, directions: ["right"] },
         { enemies: "bug_small:8,bug_medium:3", spawnInterval: 1000, directions: ["right"] },
         { enemies: "bug_medium:5,worm:4", spawnInterval: 1000, directions: ["right"] },
-        { enemies: "worm:8,bug_small:5", spawnInterval: 800, directions: ["right"] },
-        { enemies: "bug_medium:6,worm:6", spawnInterval: 800, directions: ["right"] }
+        { enemies: "worm:8,bug_small:5", spawnInterval: 800, directions: ["right"] }
       ]
     },
     {
@@ -145,76 +198,72 @@ const DEFAULT_DATA = {
         { enemies: "bug_small:6,bug_small:6", spawnInterval: 1200, directions: ["right", "left"] },
         { enemies: "bug_medium:4,bug_medium:4", spawnInterval: 1000, directions: ["right", "left"] },
         { enemies: "worm:5,worm:5", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "bug_medium:5,worm:5", spawnInterval: 800, directions: ["right", "left"] },
-        { enemies: "trojan:1,bug_small:10,worm:5", spawnInterval: 800, directions: ["right", "left"] }
+        { enemies: "trojan:1,bug_small:10", spawnInterval: 800, directions: ["right", "left"] }
       ]
     },
     {
       id: 4,
-      name: "高速侵入",
+      name: "爆発の脅威",
       cpuHp: 10,
       reward: 180,
+      description: "新敵登場：ボマー（壁を破壊する）",
       waves: [
-        { enemies: "worm:10", spawnInterval: 800, directions: ["right", "top"] },
-        { enemies: "worm:12,bug_small:5", spawnInterval: 700, directions: ["right", "bottom"] },
-        { enemies: "worm:15", spawnInterval: 600, directions: ["right", "top", "bottom"] },
-        { enemies: "worm:12,bug_medium:4", spawnInterval: 600, directions: ["right", "left"] },
-        { enemies: "worm:20", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "bug_small:10,bomber:1", spawnInterval: 1200, directions: ["right"] },
+        { enemies: "bug_medium:6,bomber:2", spawnInterval: 1000, directions: ["right", "top"] },
+        { enemies: "bomber:3,bug_small:10", spawnInterval: 1000, directions: ["right", "bottom"] },
+        { enemies: "bomber:4,worm:8", spawnInterval: 800, directions: ["right", "top", "bottom"] }
       ]
     },
     {
       id: 5,
-      name: "トロイの襲来",
-      cpuHp: 12,
-      reward: 250,
+      name: "すり抜ける影",
+      cpuHp: 10,
+      reward: 200,
+      description: "新敵登場：シールド型（1回だけ壁をすり抜ける）",
       waves: [
-        { enemies: "bug_medium:8,trojan:1", spawnInterval: 1000, directions: ["right"] },
-        { enemies: "trojan:2,worm:8", spawnInterval: 900, directions: ["right", "top"] },
-        { enemies: "trojan:2,bug_medium:6", spawnInterval: 800, directions: ["right", "bottom"] },
-        { enemies: "trojan:3,worm:10", spawnInterval: 800, directions: ["right", "top", "bottom"] },
-        { enemies: "trojan:5,bug_small:15", spawnInterval: 700, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "bug_small:8,shield:2", spawnInterval: 1200, directions: ["right"] },
+        { enemies: "shield:4,bug_medium:4", spawnInterval: 1000, directions: ["right", "left"] },
+        { enemies: "shield:5,worm:6", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "shield:6,bomber:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
       id: 6,
-      name: "四面楚歌",
+      name: "増殖する悪夢",
       cpuHp: 12,
-      reward: 300,
+      reward: 250,
+      description: "新敵登場：スポナー（倒すと小型を召喚）",
       waves: [
-        { enemies: "bug_small:12", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_medium:8", spawnInterval: 900, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "worm:12,bug_small:8", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "trojan:2,bug_medium:8", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "trojan:3,worm:10,bug_small:10", spawnInterval: 700, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "trojan:4,bug_medium:10", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "bug_small:6,spawner:2", spawnInterval: 1200, directions: ["right"] },
+        { enemies: "spawner:3,bug_medium:4", spawnInterval: 1000, directions: ["right", "left"] },
+        { enemies: "spawner:4,shield:2", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "spawner:5,bomber:2,worm:5", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
       id: 7,
-      name: "バグ大発生",
+      name: "見えない恐怖",
       cpuHp: 12,
-      reward: 350,
+      reward: 300,
+      description: "新敵登場：ステルス型（時々透明になる）",
       waves: [
-        { enemies: "bug_small:25", spawnInterval: 600, directions: ["right", "top"] },
-        { enemies: "bug_small:30", spawnInterval: 500, directions: ["right", "bottom", "left"] },
-        { enemies: "bug_small:20,bug_medium:10", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:35", spawnInterval: 400, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:25,bug_medium:15", spawnInterval: 400, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:40,bug_medium:10", spawnInterval: 350, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "stealth:5,bug_small:8", spawnInterval: 1200, directions: ["right", "top"] },
+        { enemies: "stealth:6,shield:3", spawnInterval: 1000, directions: ["right", "left"] },
+        { enemies: "stealth:8,bomber:2", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "stealth:10,spawner:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
       id: 8,
-      name: "重装甲部隊",
-      cpuHp: 15,
-      reward: 400,
+      name: "突進の嵐",
+      cpuHp: 12,
+      reward: 350,
+      description: "新敵登場：ダッシュ型（突然加速する）",
       waves: [
-        { enemies: "trojan:4,bug_medium:6", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "trojan:5,ransom:1", spawnInterval: 900, directions: ["right", "top", "bottom"] },
-        { enemies: "ransom:2,bug_medium:10", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "trojan:6,ransom:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "ransom:3,trojan:5", spawnInterval: 700, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "ransom:4,trojan:4,bug_medium:8", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "dasher:4,bug_medium:6", spawnInterval: 1200, directions: ["right"] },
+        { enemies: "dasher:5,stealth:4", spawnInterval: 1000, directions: ["right", "left"] },
+        { enemies: "dasher:6,bomber:3,shield:3", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "dasher:8,spawner:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
@@ -223,13 +272,11 @@ const DEFAULT_DATA = {
       cpuHp: 15,
       reward: 500,
       waves: [
-        { enemies: "bug_small:10,bug_medium:5,worm:5,trojan:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "worm:15,trojan:3,ransom:1", spawnInterval: 700, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:20,trojan:4,ransom:1", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_medium:10,worm:10,trojan:3,ransom:2", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:15,bug_medium:10,worm:8,trojan:4", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "worm:15,trojan:5,ransom:3", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:20,bug_medium:15,trojan:5,ransom:2", spawnInterval: 400, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "bomber:3,shield:3,stealth:3,dasher:3", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "spawner:4,bomber:4,shield:4", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "stealth:6,dasher:6,worm:10", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "bomber:5,shield:5,spawner:3,stealth:5", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "dasher:8,bomber:4,shield:4,spawner:2", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
@@ -238,13 +285,12 @@ const DEFAULT_DATA = {
       cpuHp: 20,
       reward: 1000,
       waves: [
-        { enemies: "bug_small:20,bug_medium:10,worm:10", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "trojan:5,ransom:2,worm:15", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:30,trojan:4,ransom:2", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_medium:15,worm:15,trojan:5", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "trojan:8,ransom:3", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "bug_small:25,bug_medium:15,worm:10,trojan:5,ransom:2", spawnInterval: 400, directions: ["right", "top", "bottom", "left"] },
-        { enemies: "ransom:5,trojan:10,worm:20", spawnInterval: 400, directions: ["right", "top", "bottom", "left"] }
+        { enemies: "bug_small:20,bug_medium:10,worm:10", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "bomber:5,shield:5,spawner:3", spawnInterval: 700, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "stealth:8,dasher:8,trojan:4", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "bomber:6,shield:6,spawner:4,stealth:6", spawnInterval: 600, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "dasher:10,bomber:5,ransom:3", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "bomber:8,shield:8,spawner:5,stealth:8,dasher:8", spawnInterval: 500, directions: ["right", "top", "bottom", "left"] }
       ]
     }
   ],

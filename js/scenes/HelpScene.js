@@ -212,43 +212,58 @@ class HelpScene extends Phaser.Scene {
 
   showEnemiesContent() {
     const enemies = [
-      { name: 'バグ（小）', color: '🟢', hp: 10, speed: '速い', reward: 5, desc: '最も基本的なウイルス。数で押してくる。' },
-      { name: 'バグ（中）', color: '🟡', hp: 25, speed: '普通', reward: 15, desc: '小型より頑丈。油断は禁物。' },
-      { name: 'ワーム', color: '🔴', hp: 15, speed: 'とても速い', reward: 10, desc: '高速で突っ込んでくる。素早い対応が必要。' },
-      { name: 'トロイ', color: '🟣', hp: 50, speed: '遅い', reward: 30, desc: '非常に頑丈。複数の壁で対処しよう。' },
-      { name: 'ランサム', color: '⬛', hp: 80, speed: '普通', reward: 50, desc: '最強のウイルス。全力で迎え撃て！' }
+      { name: 'バグ（小）', color: '🟢', hp: 10, speed: '速い', reward: 5, desc: '最も基本的なウイルス。数で押してくる。', stage: 1 },
+      { name: 'バグ（中）', color: '🟡', hp: 25, speed: '普通', reward: 15, desc: '小型より頑丈。油断は禁物。', stage: 1 },
+      { name: 'ワーム', color: '🔴', hp: 15, speed: 'とても速い', reward: 10, desc: '高速で突っ込んでくる。素早い対応が必要。', stage: 2 },
+      { name: 'トロイ', color: '🟣', hp: 50, speed: '遅い', reward: 30, desc: '非常に頑丈。複数の壁で対処しよう。', stage: 3 },
+      { name: 'ボマー', color: '🟠', hp: 20, speed: '速い', reward: 25, desc: '【爆発】壁に当たると自爆し、壁を破壊する！', stage: 4 },
+      { name: 'シールド型', color: '🔵', hp: 15, speed: 'とても速い', reward: 35, desc: '【シールド】壁を1回だけすり抜けられる。', stage: 5 },
+      { name: 'スポナー', color: '💜', hp: 40, speed: '遅い', reward: 40, desc: '【増殖】倒すと小型バグを3体召喚する！', stage: 6 },
+      { name: 'ステルス型', color: '⚫', hp: 12, speed: 'とても速い', reward: 30, desc: '【透明】2秒ごとに透明/不透明を切り替える。', stage: 7 },
+      { name: 'ダッシュ型', color: '💛', hp: 25, speed: '速い', reward: 30, desc: '【突進】3秒ごとに1秒間高速移動する。', stage: 8 },
+      { name: 'ランサム', color: '⬛', hp: 80, speed: '普通', reward: 50, desc: '最強のウイルス。全力で迎え撃て！', stage: 10 }
     ];
 
+    // スクロール可能なコンテンツエリア
     let y = 10;
+    const itemHeight = 55;
 
     enemies.forEach(enemy => {
       // アイコンと名前
       const header = this.add.text(40, y, `${enemy.color} ${enemy.name}`, {
-        fontSize: '16px',
+        fontSize: '14px',
         color: '#ffffff',
         fontFamily: 'sans-serif',
         fontStyle: 'bold'
       });
       this.contentContainer.add(header);
-      y += 22;
+
+      // 登場ステージ
+      const stageText = this.add.text(GAME_CONFIG.WIDTH - 100, y, `Stage ${enemy.stage}〜`, {
+        fontSize: '11px',
+        color: '#666666',
+        fontFamily: 'sans-serif'
+      });
+      this.contentContainer.add(stageText);
+      y += 18;
 
       // ステータス
       const stats = this.add.text(60, y, `HP: ${enemy.hp} / 速度: ${enemy.speed} / 報酬: ${enemy.reward}`, {
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#aaaaaa',
         fontFamily: 'sans-serif'
       });
       this.contentContainer.add(stats);
-      y += 18;
+      y += 16;
 
       // 説明
       const desc = this.add.text(60, y, enemy.desc, {
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#888888',
         fontFamily: 'sans-serif'
       });
       this.contentContainer.add(desc);
-      y += 30;
+      y += 22;
     });
   }
 

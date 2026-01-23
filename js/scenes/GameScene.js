@@ -501,6 +501,12 @@ class GameScene extends Phaser.Scene {
 
     // 敵を作成
     const enemy = new Enemy(this, x, y, enemyId, enemyData);
+
+    // 特殊能力の初期化
+    const now = Date.now();
+    enemy.lastStealthToggle = now;
+    enemy.lastDashToggle = now;
+
     this.enemies.push(enemy);
     this.enemyGroup.add(enemy.sprite);
   }
@@ -566,15 +572,80 @@ class GameScene extends Phaser.Scene {
 
   checkCollisions() {
     // 各敵と各壁の当たり判定
+    const wallsToDestroy = [];
+
     for (const enemy of this.enemies) {
       if (enemy.isStunned) continue;
 
       for (const wall of this.walls) {
         if (wall.checkCollision(enemy)) {
-          enemy.takeDamage(wall.wallData, wall.damageMultiplier);
+          // ボマー：壁を破壊して自爆
+          if (enemy.data.special === 'explode_wall') {
+            console.log('[GameScene] ボマーが壁を破壊！');
+            wallsToDestroy.push(wall);
+            enemy.hp = 0; // 自爆
+            this.createExplosionEffect(enemy.sprite.x, enemy.sprite.y);
+            break;
+          }
+          // シールド：1回だけすり抜け
+          else if (enemy.data.special === 'shield_once' && enemy.shieldActive) {
+            console.log('[GameScene] シールドが壁をすり抜け！');
+            enemy.shieldActive = false;
+            // シールド消滅エフェクト
+            this.scene.tweens?.add?.({
+              targets: enemy.sprite,
+              alpha: 0.5,
+              duration: 100,
+              yoyo: true
+            });
+            // シールド消滅の視覚効果（色が少し暗くなる）
+            enemy.sprite.setTint(0x888888);
+            continue; // ダメージを受けずにすり抜け
+          }
+          // 通常の衝突
+          else {
+            enemy.takeDamage(wall.wallData, wall.damageMultiplier);
+          }
         }
       }
     }
+
+    // 破壊された壁を削除
+    for (const wall of wallsToDestroy) {
+      const index = this.walls.indexOf(wall);
+      if (index > -1) {
+        wall.destroy();
+        this.walls.splice(index, 1);
+      }
+    }
+  }
+
+  createExplosionEffect(x, y) {
+    // 爆発エフェクト
+    for (let i = 0; i < 12; i++) {
+      const particle = this.add.graphics();
+      particle.fillStyle(0xff6600, 1);
+      particle.fillCircle(0, 0, 6);
+      particle.x = x;
+      particle.y = y;
+
+      const angle = (Math.PI * 2 / 12) * i;
+      const distance = 50;
+
+      this.tweens.add({
+        targets: particle,
+        x: x + Math.cos(angle) * distance,
+        y: y + Math.sin(angle) * distance,
+        alpha: 0,
+        scale: 2,
+        duration: 400,
+        ease: 'Power2',
+        onComplete: () => particle.destroy()
+      });
+    }
+
+    // 画面揺れ
+    this.cameras.main.shake(150, 0.02);
   }
 
   checkWaveClear() {
@@ -612,8 +683,35 @@ class GameScene extends Phaser.Scene {
     // UIに通知
     this.events.emit('scoreChanged', { score: this.score });
 
+    // スポナー：死亡時に小型バグを3体召喚
+    if (enemy.data.special === 'spawn_on_death') {
+      console.log('[GameScene] スポナーが小型バグを召喚！');
+      for (let i = 0; i < 3; i++) {
+        const offsetX = (Math.random() - 0.5) * 50;
+        const offsetY = (Math.random() - 0.5) * 50;
+        this.spawnEnemyAtPosition('bug_small', enemy.sprite.x + offsetX, enemy.sprite.y + offsetY);
+      }
+    }
+
     // 撃破エフェクト
     this.createKillEffect(enemy.sprite.x, enemy.sprite.y);
+  }
+
+  // 特定位置に敵をスポーンする（スポナー用）
+  spawnEnemyAtPosition(enemyId, x, y) {
+    const baseData = this.getEnemyData(enemyId);
+    if (!baseData) return;
+
+    // 難易度によるHP補正
+    const enemyData = {
+      ...baseData,
+      hp: Math.ceil(baseData.hp * this.enemyHpMultiplier)
+    };
+
+    // 敵を作成
+    const enemy = new Enemy(this, x, y, enemyId, enemyData);
+    this.enemies.push(enemy);
+    this.enemyGroup.add(enemy.sprite);
   }
 
   createKillEffect(x, y) {
@@ -816,8 +914,10 @@ class Enemy {
   constructor(scene, x, y, enemyId, data) {
     this.scene = scene;
     this.data = data;
+    this.type = enemyId; // 敵タイプ（特殊能力判定用）
     this.hp = data.hp;
     this.speed = data.speed;
+    this.baseSpeed = data.speed; // ダッシュ用の基本速度
     this.isStunned = false;
     this.stunEndTime = 0;
     this.slowEndTime = 0;
@@ -827,12 +927,19 @@ class Enemy {
     this.dotInterval = 0;
     this.lastDotTime = 0;
 
+    // 特殊能力用プロパティ
+    this.shieldActive = data.special === 'shield_once'; // シールド：壁1回すり抜け
+    this.stealthVisible = true; // ステルス：表示状態
+    this.dashActive = false; // ダッシュ：加速中
+    this.lastStealthToggle = 0; // ステルス切替タイミング
+    this.lastDashToggle = 0; // ダッシュ切替タイミング
+
     // スプライト作成
     const spriteKey = `enemy_${enemyId}`;
     const config = PLACEHOLDER_CONFIG[spriteKey] || {
       width: data.width,
       height: data.height,
-      color: 0xff00ff,
+      color: data.color || 0xff00ff,
       shape: 'circle'
     };
 
@@ -861,6 +968,41 @@ class Enemy {
     if (now < this.dotEndTime && now - this.lastDotTime >= this.dotInterval) {
       this.hp -= this.dotDamage;
       this.lastDotTime = now;
+    }
+
+    // ステルス：2秒ごとに透明切替
+    if (this.data.special === 'stealth') {
+      if (now - this.lastStealthToggle >= 2000) {
+        this.stealthVisible = !this.stealthVisible;
+        this.sprite.setAlpha(this.stealthVisible ? 1 : 0.2);
+        this.lastStealthToggle = now;
+      }
+    }
+
+    // ダッシュ：3秒周期で1秒間加速
+    if (this.data.special === 'dash') {
+      const cycle = (now - this.lastDashToggle) % 3000;
+      const shouldDash = cycle < 1000;
+      if (shouldDash !== this.dashActive) {
+        this.dashActive = shouldDash;
+        this.speed = shouldDash ? this.baseSpeed * 3 : this.baseSpeed;
+        // ダッシュ中のビジュアル
+        if (shouldDash) {
+          this.scene.tweens.add({
+            targets: this.sprite,
+            scaleX: 1.3,
+            scaleY: 0.7,
+            duration: 100
+          });
+        } else {
+          this.scene.tweens.add({
+            targets: this.sprite,
+            scaleX: 1,
+            scaleY: 1,
+            duration: 100
+          });
+        }
+      }
     }
 
     // 移動
