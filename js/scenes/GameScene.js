@@ -640,43 +640,44 @@ class GameScene extends Phaser.Scene {
         for (const wall of this.walls) {
           if (!wall) continue;
           if (wall.checkCollision(enemy)) {
-          // ボマー：壁を破壊して自爆
-          if (enemy.data.special === 'explode_wall') {
-            console.log('[GameScene] ボマーが壁を破壊！');
-            wallsToDestroy.push(wall);
-            enemy.hp = 0; // 自爆
-            enemy.lastHitWall = wall; // キルした壁を記録
-            this.createExplosionEffect(enemy.sprite.x, enemy.sprite.y);
-            break;
-          }
-          // シールド：1回だけすり抜け
-          else if (enemy.data.special === 'shield_once' && enemy.shieldActive) {
-            console.log('[GameScene] シールドが壁をすり抜け！');
-            enemy.shieldActive = false;
-            // 壁を通過するための短いスタン（次フレームでの再衝突を防ぐ）
-            enemy.isStunned = true;
-            enemy.stunEndTime = Date.now() + 500;
-            // シールド消滅エフェクト
-            try {
-              if (enemy.sprite && enemy.sprite.active) {
-                this.tweens.add({
-                  targets: enemy.sprite,
-                  alpha: 0.5,
-                  duration: 100,
-                  yoyo: true
-                });
-                // シールド消滅の視覚効果（色が少し暗くなる）
-                enemy.sprite.setTint(0x888888);
-              }
-            } catch (e) {
-              console.warn('[GameScene] シールドエフェクトエラー:', e);
+            // ボマー：壁を破壊して自爆
+            if (enemy.data.special === 'explode_wall') {
+              console.log('[GameScene] ボマーが壁を破壊！');
+              wallsToDestroy.push(wall);
+              enemy.hp = 0; // 自爆
+              enemy.lastHitWall = wall; // キルした壁を記録
+              this.createExplosionEffect(enemy.sprite.x, enemy.sprite.y);
+              break;
             }
-            break; // この敵の壁チェックを終了
-          }
-          // 通常の衝突
-          else {
-            enemy.takeDamage(wall.wallData, wall.damageMultiplier);
-            enemy.lastHitWall = wall; // ダメージを与えた壁を記録
+            // シールド：1回だけすり抜け
+            else if (enemy.data.special === 'shield_once' && enemy.shieldActive) {
+              console.log('[GameScene] シールドが壁をすり抜け！');
+              enemy.shieldActive = false;
+              // 壁を通過するための短いスタン（次フレームでの再衝突を防ぐ）
+              enemy.isStunned = true;
+              enemy.stunEndTime = Date.now() + 500;
+              // シールド消滅エフェクト
+              try {
+                if (enemy.sprite && enemy.sprite.active) {
+                  this.tweens.add({
+                    targets: enemy.sprite,
+                    alpha: 0.5,
+                    duration: 100,
+                    yoyo: true
+                  });
+                  // シールド消滅の視覚効果（色が少し暗くなる）
+                  enemy.sprite.setTint(0x888888);
+                }
+              } catch (e) {
+                console.warn('[GameScene] シールドエフェクトエラー:', e);
+              }
+              break; // この敵の壁チェックを終了
+            }
+            // 通常の衝突
+            else {
+              enemy.takeDamage(wall.wallData, wall.damageMultiplier);
+              enemy.lastHitWall = wall; // ダメージを与えた壁を記録
+            }
           }
         }
       }
