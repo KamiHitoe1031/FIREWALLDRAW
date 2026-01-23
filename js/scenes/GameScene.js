@@ -55,6 +55,16 @@ class GameScene extends Phaser.Scene {
     this.isGameOver = false;
     this.isCleared = false;
 
+    // 統計情報
+    this.stats = {
+      wallsUsed: 0,
+      totalKills: 0,
+      multiKillCount: 0,
+      damageTaken: 0,
+      clearTime: 0
+    };
+    this.startTime = 0;
+
     // データ
     this.enemiesData = null;
     this.wallsData = null;
@@ -110,6 +120,9 @@ class GameScene extends Phaser.Scene {
 
     // ウェーブ開始（少し遅延）
     this.time.delayedCall(1000, () => this.startWave());
+
+    // 開始時刻記録
+    this.startTime = Date.now();
 
     console.log('[GameScene] create() 完了');
     } catch (error) {
@@ -306,7 +319,20 @@ class GameScene extends Phaser.Scene {
   createWall(points) {
     const wallData = this.getWallData(this.selectedWallType);
     const wall = new Wall(this, points, wallData, this.wallDuration, this.wallDamageMultiplier);
+
+    // 壁の長さを計算
+    let length = 0;
+    for (let i = 1; i < points.length; i++) {
+      length += Phaser.Math.Distance.Between(
+        points[i - 1].x, points[i - 1].y,
+        points[i].x, points[i].y
+      );
+    }
+    wall.length = length;
+    wall.killCount = 0;
+
     this.walls.push(wall);
+    this.stats.wallsUsed++;
   }
 
   getWallData(wallId) {
@@ -544,10 +570,43 @@ class GameScene extends Phaser.Scene {
       wall.update(delta);
 
       if (wall.isExpired()) {
+        // マルチキルボーナス判定
+        if (wall.killCount >= 2) {
+          const bonus = wall.killCount * 50;
+          this.score += bonus;
+          this.stats.multiKillCount++;
+          this.showMultiKillBonus(wall.killCount, bonus);
+          this.events.emit('scoreChanged', { score: this.score });
+        }
         wall.destroy();
         this.walls.splice(i, 1);
       }
     }
+  }
+
+  showMultiKillBonus(killCount, bonus) {
+    const text = this.add.text(
+      GAME_CONFIG.WIDTH / 2,
+      GAME_CONFIG.HEIGHT / 2 - 50,
+      `マルチキル! ×${killCount} +${bonus}`,
+      {
+        fontSize: '24px',
+        color: '#ffff00',
+        fontFamily: 'sans-serif',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 4
+      }
+    ).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: text,
+      y: text.y - 50,
+      alpha: 0,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => text.destroy()
+    });
   }
 
   updateEnemies(delta) {
@@ -584,6 +643,7 @@ class GameScene extends Phaser.Scene {
             console.log('[GameScene] ボマーが壁を破壊！');
             wallsToDestroy.push(wall);
             enemy.hp = 0; // 自爆
+            enemy.lastHitWall = wall; // キルした壁を記録
             this.createExplosionEffect(enemy.sprite.x, enemy.sprite.y);
             break;
           }
@@ -592,7 +652,7 @@ class GameScene extends Phaser.Scene {
             console.log('[GameScene] シールドが壁をすり抜け！');
             enemy.shieldActive = false;
             // シールド消滅エフェクト
-            this.scene.tweens?.add?.({
+            this.tweens.add({
               targets: enemy.sprite,
               alpha: 0.5,
               duration: 100,
@@ -605,6 +665,7 @@ class GameScene extends Phaser.Scene {
           // 通常の衝突
           else {
             enemy.takeDamage(wall.wallData, wall.damageMultiplier);
+            enemy.lastHitWall = wall; // ダメージを与えた壁を記録
           }
         }
       }
@@ -660,6 +721,7 @@ class GameScene extends Phaser.Scene {
 
   onEnemyReachCPU(enemy) {
     this.cpuHp--;
+    this.stats.damageTaken++;
     console.log('[GameScene] CPUダメージ! HP:', this.cpuHp, '/', this.cpuMaxHp);
 
     this.updateCPUExpression();
@@ -678,7 +740,20 @@ class GameScene extends Phaser.Scene {
   }
 
   onEnemyKilled(enemy) {
-    this.score += enemy.data.reward;
+    // 壁の長さによるスコア倍率計算
+    let multiplier = 1.0;
+    if (enemy.lastHitWall) {
+      const wallLength = enemy.lastHitWall.length || 150;
+      // 50px → ×2.0、150px → ×1.6、300px → ×1.0
+      multiplier = Math.max(1.0, 2.0 - (wallLength - 50) / 250);
+      // 壁のキルカウントを増加
+      enemy.lastHitWall.killCount++;
+    }
+
+    const baseScore = enemy.data.reward;
+    const finalScore = Math.floor(baseScore * multiplier);
+    this.score += finalScore;
+    this.stats.totalKills++;
 
     // UIに通知
     this.events.emit('scoreChanged', { score: this.score });
@@ -765,6 +840,34 @@ class GameScene extends Phaser.Scene {
     if (this.isCleared) return;
     this.isCleared = true;
 
+    // クリアタイム計算
+    this.stats.clearTime = Date.now() - this.startTime;
+
+    // ボーナス計算
+    const targetWalls = this.currentStageData.targetWalls || 20;
+    const bonuses = {
+      wallEconomy: { rank: '-', bonus: 0 },
+      noDamage: false,
+      multiKill: this.stats.multiKillCount
+    };
+
+    // 壁エコノミーボーナス
+    const wallRatio = this.stats.wallsUsed / targetWalls;
+    if (wallRatio <= 0.5) {
+      bonuses.wallEconomy = { rank: 'S', bonus: 2000 };
+    } else if (wallRatio <= 0.75) {
+      bonuses.wallEconomy = { rank: 'A', bonus: 1000 };
+    } else if (wallRatio <= 1.0) {
+      bonuses.wallEconomy = { rank: 'B', bonus: 500 };
+    }
+    this.score += bonuses.wallEconomy.bonus;
+
+    // ノーダメージボーナス
+    if (this.stats.damageTaken === 0) {
+      bonuses.noDamage = true;
+      this.score += 1000;
+    }
+
     this.time.delayedCall(1000, () => {
       this.scene.stop('UIScene');
       this.scene.start('ResultScene', {
@@ -774,7 +877,10 @@ class GameScene extends Phaser.Scene {
         score: this.score,
         reward: this.currentStageData.reward,
         waveReached: this.currentWave,
-        totalWaves: this.currentStageData.waves.length
+        totalWaves: this.currentStageData.waves.length,
+        stats: this.stats,
+        bonuses: bonuses,
+        targetWalls: targetWalls
       });
     });
   }
@@ -782,6 +888,9 @@ class GameScene extends Phaser.Scene {
   gameOver() {
     if (this.isGameOver) return;
     this.isGameOver = true;
+
+    // クリアタイム計算
+    this.stats.clearTime = Date.now() - this.startTime;
 
     // スポーンタイマー停止
     if (this.spawnTimer) {
@@ -797,7 +906,8 @@ class GameScene extends Phaser.Scene {
         difficulty: this.difficulty,
         score: this.score,
         waveReached: this.currentWave + 1,
-        totalWaves: this.currentStageData.waves.length
+        totalWaves: this.currentStageData.waves.length,
+        stats: this.stats
       });
     });
   }

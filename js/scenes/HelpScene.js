@@ -1,6 +1,6 @@
 /**
  * HelpScene.js
- * ヘルプ画面（タブ切り替え式）
+ * ヘルプ画面（タブ切り替え式・スクロール対応）
  */
 
 class HelpScene extends Phaser.Scene {
@@ -11,6 +11,12 @@ class HelpScene extends Phaser.Scene {
   create() {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
     this.currentTab = 'controls';
+
+    // スクロール関連
+    this.scrollY = 0;
+    this.maxScrollY = 0;
+    this.contentAreaTop = 110;
+    this.contentAreaHeight = HEIGHT - 190;
 
     // 背景
     this.createBackground();
@@ -29,14 +35,70 @@ class HelpScene extends Phaser.Scene {
     this.createTab(WIDTH / 2, 70, 'difficulty', '難易度');
     this.createTab(WIDTH / 2 + 150, 70, 'enemies', '図鑑');
 
-    // コンテンツエリア
-    this.contentContainer = this.add.container(0, 110);
+    // コンテンツエリア（マスク付き）
+    this.contentContainer = this.add.container(0, this.contentAreaTop);
+    this.setupContentMask();
 
-    // 戻るボタン
+    // スクロールバー
+    this.createScrollbar();
+
+    // マウスホイールイベント
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      this.handleScroll(deltaY);
+    });
+
+    // 戻るボタン（固定位置）
     this.createBackButton(WIDTH / 2, HEIGHT - 40);
 
     // 初期タブ表示
     this.showTab('controls');
+  }
+
+  setupContentMask() {
+    const { WIDTH } = GAME_CONFIG;
+    const maskShape = this.make.graphics();
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(20, this.contentAreaTop, WIDTH - 40, this.contentAreaHeight);
+    const mask = maskShape.createGeometryMask();
+    this.contentContainer.setMask(mask);
+  }
+
+  createScrollbar() {
+    const { WIDTH } = GAME_CONFIG;
+    this.scrollbarBg = this.add.graphics();
+    this.scrollbarBg.fillStyle(0x333333, 0.5);
+    this.scrollbarBg.fillRect(WIDTH - 30, this.contentAreaTop, 8, this.contentAreaHeight);
+
+    this.scrollbarThumb = this.add.graphics();
+    this.scrollbarThumb.setVisible(false);
+  }
+
+  updateScrollbar() {
+    const { WIDTH } = GAME_CONFIG;
+    this.scrollbarThumb.clear();
+
+    if (this.maxScrollY <= 0) {
+      this.scrollbarThumb.setVisible(false);
+      this.scrollbarBg.setVisible(false);
+      return;
+    }
+
+    this.scrollbarBg.setVisible(true);
+    this.scrollbarThumb.setVisible(true);
+    const thumbHeight = Math.max(20, (this.contentAreaHeight / (this.contentAreaHeight + this.maxScrollY)) * this.contentAreaHeight);
+    const thumbY = this.contentAreaTop + (this.scrollY / this.maxScrollY) * (this.contentAreaHeight - thumbHeight);
+
+    this.scrollbarThumb.fillStyle(0x00aaff, 0.8);
+    this.scrollbarThumb.fillRoundedRect(WIDTH - 30, thumbY, 8, thumbHeight, 4);
+  }
+
+  handleScroll(deltaY) {
+    if (this.maxScrollY <= 0) return;
+
+    this.scrollY += deltaY * 0.5;
+    this.scrollY = Phaser.Math.Clamp(this.scrollY, 0, this.maxScrollY);
+    this.contentContainer.y = this.contentAreaTop - this.scrollY;
+    this.updateScrollbar();
   }
 
   createBackground() {
@@ -95,6 +157,11 @@ class HelpScene extends Phaser.Scene {
   showTab(tabId) {
     this.currentTab = tabId;
 
+    // スクロール位置リセット
+    this.scrollY = 0;
+    this.maxScrollY = 0;
+    this.contentContainer.y = this.contentAreaTop;
+
     // タブスタイル更新
     Object.keys(this.tabs).forEach(id => {
       this.updateTabStyle(id, id === tabId);
@@ -104,17 +171,22 @@ class HelpScene extends Phaser.Scene {
     this.contentContainer.removeAll(true);
 
     // コンテンツ表示
+    let contentHeight = 0;
     switch (tabId) {
       case 'controls':
-        this.showControlsContent();
+        contentHeight = this.showControlsContent();
         break;
       case 'difficulty':
-        this.showDifficultyContent();
+        contentHeight = this.showDifficultyContent();
         break;
       case 'enemies':
-        this.showEnemiesContent();
+        contentHeight = this.showEnemiesContent();
         break;
     }
+
+    // スクロール範囲を計算
+    this.maxScrollY = Math.max(0, contentHeight - this.contentAreaHeight + 20);
+    this.updateScrollbar();
   }
 
   showControlsContent() {
@@ -154,6 +226,8 @@ class HelpScene extends Phaser.Scene {
     addLine('・敵の進路を予測して壁を描こう');
     addLine('・複数の壁で敵を足止め！');
     addLine('・四方から来る敵に注意しよう');
+
+    return y;
   }
 
   showDifficultyContent() {
@@ -208,6 +282,9 @@ class HelpScene extends Phaser.Scene {
       lineSpacing: 8
     });
     this.contentContainer.add(bonus);
+    y += 50;
+
+    return y;
   }
 
   showEnemiesContent() {
@@ -224,9 +301,7 @@ class HelpScene extends Phaser.Scene {
       { name: 'ランサム', color: '⬛', hp: 80, speed: '普通', reward: 50, desc: '最強のウイルス。全力で迎え撃て！', stage: 10 }
     ];
 
-    // スクロール可能なコンテンツエリア
     let y = 10;
-    const itemHeight = 55;
 
     enemies.forEach(enemy => {
       // アイコンと名前
@@ -263,8 +338,10 @@ class HelpScene extends Phaser.Scene {
         fontFamily: 'sans-serif'
       });
       this.contentContainer.add(desc);
-      y += 22;
+      y += 26;
     });
+
+    return y;
   }
 
   createBackButton(x, y) {

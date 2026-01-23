@@ -48,8 +48,11 @@ class StageSelectScene extends Phaser.Scene {
       this.createStageButton(x, y, btnWidth, btnHeight, stage);
     });
 
+    // ランキングボタン
+    this.createRankingButton(WIDTH / 2 - 100, HEIGHT - 50);
+
     // 戻るボタン
-    this.createBackButton(WIDTH / 2, HEIGHT - 50);
+    this.createBackButton(WIDTH / 2 + 100, HEIGHT - 50);
   }
 
   createBackground() {
@@ -165,6 +168,54 @@ class StageSelectScene extends Phaser.Scene {
         this.startGame(stage.id);
       });
     }
+  }
+
+  createRankingButton(x, y) {
+    const width = 150;
+    const height = 45;
+    const color = 0x4444aa;
+
+    const container = this.add.container(x, y);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(color, 1);
+    bg.lineStyle(2, 0x00aaff, 1);
+    bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
+    bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+
+    const text = this.add.text(0, 0, 'ランキング', {
+      fontSize: '16px',
+      color: '#ffffff',
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+
+    container.add([bg, text]);
+    container.setSize(width, height);
+    container.setInteractive({ useHandCursor: true });
+
+    container.on('pointerover', () => {
+      bg.clear();
+      bg.fillStyle(0x5555bb, 1);
+      bg.lineStyle(2, 0xffff00, 1);
+      bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
+      bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+    });
+
+    container.on('pointerout', () => {
+      bg.clear();
+      bg.fillStyle(color, 1);
+      bg.lineStyle(2, 0x00aaff, 1);
+      bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
+      bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+    });
+
+    container.on('pointerdown', () => {
+      this.scene.start('RankingScene', {
+        stageId: 1,
+        difficulty: this.difficulty,
+        fromScene: 'StageSelectScene'
+      });
+    });
   }
 
   createBackButton(x, y) {

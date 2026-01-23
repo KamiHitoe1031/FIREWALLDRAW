@@ -83,7 +83,8 @@ const config = {
     DataScene,
     GameScene,
     UIScene,
-    ResultScene
+    ResultScene,
+    RankingScene
   ]
 };
 

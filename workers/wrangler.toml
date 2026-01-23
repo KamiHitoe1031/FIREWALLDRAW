@@ -1,0 +1,24 @@
+# wrangler.toml
+# Cloudflare Workers設定 - ファイアウォール・ドロー ランキングAPI
+
+name = "firewall-ranking-api"
+main = "ranking-api.js"
+compatibility_date = "2024-01-01"
+
+# KV Namespace設定
+# 本番環境にデプロイ後、以下のIDを実際のKV Namespace IDに置き換えてください
+# wrangler kv:namespace create RANKING_KV でnamespaceを作成できます
+
+[[kv_namespaces]]
+binding = "RANKING_KV"
+id = "YOUR_KV_NAMESPACE_ID_HERE"
+preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID_HERE"
+
+# カスタムドメイン（オプション）
+# routes = [
+#   { pattern = "firewall-ranking-api.eteandran.workers.dev", zone_name = "eteandran.workers.dev" }
+# ]
+
+# 環境設定
+[vars]
+ENVIRONMENT = "production"

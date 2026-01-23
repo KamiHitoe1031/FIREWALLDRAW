@@ -4,6 +4,7 @@
     "name": "はじまりの防衛",
     "cpuHp": 10,
     "reward": 100,
+    "targetWalls": 15,
     "waves": [
       { "enemies": "bug_small:5", "spawnInterval": 1500, "directions": ["right"] },
       { "enemies": "bug_small:8", "spawnInterval": 1200, "directions": ["right"] },
@@ -16,6 +17,7 @@
     "name": "東からの脅威",
     "cpuHp": 10,
     "reward": 120,
+    "targetWalls": 18,
     "waves": [
       { "enemies": "bug_small:10", "spawnInterval": 1200, "directions": ["right"] },
       { "enemies": "bug_small:8,bug_medium:3", "spawnInterval": 1000, "directions": ["right"] },
@@ -28,6 +30,7 @@
     "name": "挟み撃ち",
     "cpuHp": 10,
     "reward": 150,
+    "targetWalls": 20,
     "waves": [
       { "enemies": "bug_small:6,bug_small:6", "spawnInterval": 1200, "directions": ["right", "left"] },
       { "enemies": "bug_medium:4,bug_medium:4", "spawnInterval": 1000, "directions": ["right", "left"] },
@@ -40,6 +43,7 @@
     "name": "爆発の脅威",
     "cpuHp": 10,
     "reward": 180,
+    "targetWalls": 22,
     "description": "新敵登場：ボマー（壁を破壊する）",
     "waves": [
       { "enemies": "bug_small:10,bomber:1", "spawnInterval": 1200, "directions": ["right"] },
@@ -53,6 +57,7 @@
     "name": "すり抜ける影",
     "cpuHp": 10,
     "reward": 200,
+    "targetWalls": 25,
     "description": "新敵登場：シールド型（1回だけ壁をすり抜ける）",
     "waves": [
       { "enemies": "bug_small:8,shield:2", "spawnInterval": 1200, "directions": ["right"] },
@@ -66,6 +71,7 @@
     "name": "増殖する悪夢",
     "cpuHp": 12,
     "reward": 250,
+    "targetWalls": 28,
     "description": "新敵登場：スポナー（倒すと小型を召喚）",
     "waves": [
       { "enemies": "bug_small:6,spawner:2", "spawnInterval": 1200, "directions": ["right"] },
@@ -79,6 +85,7 @@
     "name": "見えない恐怖",
     "cpuHp": 12,
     "reward": 300,
+    "targetWalls": 30,
     "description": "新敵登場：ステルス型（時々透明になる）",
     "waves": [
       { "enemies": "stealth:5,bug_small:8", "spawnInterval": 1200, "directions": ["right", "top"] },
@@ -92,6 +99,7 @@
     "name": "突進の嵐",
     "cpuHp": 12,
     "reward": 350,
+    "targetWalls": 32,
     "description": "新敵登場：ダッシュ型（突然加速する）",
     "waves": [
       { "enemies": "dasher:4,bug_medium:6", "spawnInterval": 1200, "directions": ["right"] },
@@ -105,6 +113,7 @@
     "name": "カオスウェーブ",
     "cpuHp": 15,
     "reward": 500,
+    "targetWalls": 35,
     "waves": [
       { "enemies": "bomber:3,shield:3,stealth:3,dasher:3", "spawnInterval": 1000, "directions": ["right", "top", "bottom", "left"] },
       { "enemies": "spawner:4,bomber:4,shield:4", "spawnInterval": 800, "directions": ["right", "top", "bottom", "left"] },
@@ -118,6 +127,7 @@
     "name": "最終防衛戦",
     "cpuHp": 20,
     "reward": 1000,
+    "targetWalls": 40,
     "waves": [
       { "enemies": "bug_small:20,bug_medium:10,worm:10", "spawnInterval": 800, "directions": ["right", "top", "bottom", "left"] },
       { "enemies": "bomber:5,shield:5,spawner:3", "spawnInterval": 700, "directions": ["right", "top", "bottom", "left"] },
