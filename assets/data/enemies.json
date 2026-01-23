@@ -43,5 +43,60 @@
     "reward": 50,
     "width": 64,
     "height": 64
+  },
+  {
+    "id": "bomber",
+    "name": "ボマー",
+    "hp": 20,
+    "speed": 80,
+    "reward": 25,
+    "width": 40,
+    "height": 40,
+    "color": "0xFF6600",
+    "special": "explode_wall"
+  },
+  {
+    "id": "shield",
+    "name": "シールド型",
+    "hp": 15,
+    "speed": 100,
+    "reward": 35,
+    "width": 20,
+    "height": 20,
+    "color": "0x00FFFF",
+    "special": "shield_once"
+  },
+  {
+    "id": "spawner",
+    "name": "スポナー",
+    "hp": 40,
+    "speed": 50,
+    "reward": 40,
+    "width": 48,
+    "height": 48,
+    "color": "0x9900FF",
+    "special": "spawn_on_death"
+  },
+  {
+    "id": "stealth",
+    "name": "ステルス型",
+    "hp": 12,
+    "speed": 120,
+    "reward": 30,
+    "width": 20,
+    "height": 20,
+    "color": "0x888888",
+    "special": "stealth"
+  },
+  {
+    "id": "dasher",
+    "name": "ダッシュ型",
+    "hp": 25,
+    "speed": 80,
+    "reward": 30,
+    "width": 32,
+    "height": 32,
+    "color": "0xFFFF00",
+    "special": "dash"
   }
 ]

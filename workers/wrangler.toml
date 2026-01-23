@@ -11,8 +11,7 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "RANKING_KV"
-id = "YOUR_KV_NAMESPACE_ID_HERE"
-preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID_HERE"
+id = "29e36f63a9114bbaaa00b34200c95adc"
 
 # カスタムドメイン（オプション）
 # routes = [
