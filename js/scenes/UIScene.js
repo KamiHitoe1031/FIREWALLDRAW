@@ -53,6 +53,15 @@ class UIScene extends Phaser.Scene {
       fontFamily: 'sans-serif'
     });
 
+    // GameSceneから初期HP値を取得
+    const gameScene = this.scene.get('GameScene');
+    const initialHp = gameScene ? gameScene.cpuHp : 10;
+    const initialMaxHp = gameScene ? gameScene.cpuMaxHp : 10;
+
+    // GameDataに同期
+    GameData.cpuHp = initialHp;
+    GameData.cpuMaxHp = initialMaxHp;
+
     // HPバー
     this.add.text(20, 28, 'HP:', {
       fontSize: '14px',
@@ -61,13 +70,16 @@ class UIScene extends Phaser.Scene {
     });
 
     this.hpBar = this.assetManager.createHPBar(50, 25, 120, 18);
+    this.hpBar.updateHP(initialHp, initialMaxHp);
 
     // HPテキスト
-    this.hpText = this.add.text(180, 28, `${GameData.cpuHp}/${GameData.cpuMaxHp}`, {
+    this.hpText = this.add.text(180, 28, `${initialHp}/${initialMaxHp}`, {
       fontSize: '12px',
       color: '#ffffff',
       fontFamily: 'sans-serif'
     });
+
+    console.log('[UIScene] 初期HP設定:', initialHp, '/', initialMaxHp);
 
     // スコア
     this.scoreText = this.add.text(WIDTH / 2, 25, 'SCORE: 0', {
@@ -299,9 +311,19 @@ class UIScene extends Phaser.Scene {
     });
   }
 
-  updateHP() {
-    this.hpBar.updateHP(GameData.cpuHp, GameData.cpuMaxHp);
-    this.hpText.setText(`${GameData.cpuHp}/${GameData.cpuMaxHp}`);
+  updateHP(data) {
+    // イベントデータからHP値を取得
+    const cpuHp = data ? data.cpuHp : GameData.cpuHp;
+    const cpuMaxHp = data ? data.cpuMaxHp : GameData.cpuMaxHp;
+
+    console.log('[UIScene] HP更新:', cpuHp, '/', cpuMaxHp);
+
+    this.hpBar.updateHP(cpuHp, cpuMaxHp);
+    this.hpText.setText(`${cpuHp}/${cpuMaxHp}`);
+
+    // GameDataも同期（他の場所で参照される可能性があるため）
+    GameData.cpuHp = cpuHp;
+    GameData.cpuMaxHp = cpuMaxHp;
 
     // ダメージ時の演出
     this.tweens.add({
@@ -312,8 +334,14 @@ class UIScene extends Phaser.Scene {
     });
   }
 
-  updateScore() {
-    this.scoreText.setText(`SCORE: ${GameData.score}`);
+  updateScore(data) {
+    // イベントデータからスコアを取得
+    const score = data ? data.score : GameData.score;
+
+    this.scoreText.setText(`SCORE: ${score}`);
+
+    // GameDataも同期
+    GameData.score = score;
 
     // スコア更新時の演出
     this.tweens.add({

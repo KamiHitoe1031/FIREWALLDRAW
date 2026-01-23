@@ -589,13 +589,21 @@ class GameScene extends Phaser.Scene {
 
   onEnemyReachCPU(enemy) {
     this.cpuHp--;
+    console.log('[GameScene] CPUダメージ! HP:', this.cpuHp, '/', this.cpuMaxHp);
+
     this.updateCPUExpression();
 
     // UIに通知
+    console.log('[GameScene] cpuDamagedイベント発火');
     this.events.emit('cpuDamaged', { cpuHp: this.cpuHp, cpuMaxHp: this.cpuMaxHp });
 
     // ダメージエフェクト
     this.cameras.main.shake(200, 0.01);
+
+    // ゲームオーバーチェック
+    if (this.cpuHp <= 0 && !this.isGameOver) {
+      this.gameOver();
+    }
   }
 
   onEnemyKilled(enemy) {
