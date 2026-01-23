@@ -640,6 +640,9 @@ class GameScene extends Phaser.Scene {
         for (const wall of this.walls) {
           if (!wall) continue;
           if (wall.checkCollision(enemy)) {
+            // デバッグログ
+            console.log('[GameScene] 衝突検出:', enemy.type, 'special:', enemy.data.special, 'shieldActive:', enemy.shieldActive);
+
             // ボマー：壁を破壊して自爆
             if (enemy.data.special === 'explode_wall') {
               console.log('[GameScene] ボマーが壁を破壊！');
@@ -649,8 +652,8 @@ class GameScene extends Phaser.Scene {
               this.createExplosionEffect(enemy.sprite.x, enemy.sprite.y);
               break;
             }
-            // シールド：1回だけすり抜け
-            else if (enemy.data.special === 'shield_once' && enemy.shieldActive) {
+            // シールド：1回だけすり抜け（typeでも判定）
+            else if ((enemy.data.special === 'shield_once' || enemy.type === 'shield') && enemy.shieldActive) {
               console.log('[GameScene] シールドが壁をすり抜け！');
               enemy.shieldActive = false;
               // 壁を通過するための短いスタン（次フレームでの再衝突を防ぐ）
@@ -1052,7 +1055,9 @@ class Enemy {
     this.lastDotTime = 0;
 
     // 特殊能力用プロパティ
-    this.shieldActive = data.special === 'shield_once'; // シールド：壁1回すり抜け
+    // シールド：壁1回すり抜け（typeまたはspecialで判定）
+    this.shieldActive = (data.special === 'shield_once' || enemyId === 'shield');
+    console.log('[Enemy] 生成:', enemyId, 'special:', data.special, 'shieldActive:', this.shieldActive);
     this.stealthVisible = true; // ステルス：表示状態
     this.dashActive = false; // ダッシュ：加速中
     this.lastStealthToggle = 0; // ステルス切替タイミング
