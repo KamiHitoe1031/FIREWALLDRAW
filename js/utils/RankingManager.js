@@ -20,18 +20,21 @@ class RankingManager {
    */
   async submitScore(playerName, stageId, difficulty, score, clearTime) {
     try {
+      const requestBody = {
+        playerName,
+        stageId,
+        difficulty,
+        score,
+        clearTime
+      };
+      console.log('[RankingManager] スコア送信:', requestBody);
+
       const response = await fetch(`${this.apiUrl}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          playerName,
-          stageId,
-          difficulty,
-          score,
-          clearTime
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -39,9 +42,10 @@ class RankingManager {
       }
 
       const data = await response.json();
+      console.log('[RankingManager] 送信結果:', data);
       return data;
     } catch (error) {
-      console.error('ランキング送信エラー:', error);
+      console.error('[RankingManager] ランキング送信エラー:', error);
       return { success: false, error: error.message };
     }
   }
@@ -55,18 +59,20 @@ class RankingManager {
    */
   async getTopScores(stageId, difficulty, limit = 20) {
     try {
-      const response = await fetch(
-        `${this.apiUrl}/rankings?stageId=${stageId}&difficulty=${difficulty}&limit=${limit}`
-      );
+      const url = `${this.apiUrl}/rankings?stageId=${stageId}&difficulty=${difficulty}&limit=${limit}`;
+      console.log('[RankingManager] ランキング取得:', url);
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('[RankingManager] 取得結果:', data);
       return data;
     } catch (error) {
-      console.error('ランキング取得エラー:', error);
+      console.error('[RankingManager] ランキング取得エラー:', error);
       return { success: false, error: error.message };
     }
   }

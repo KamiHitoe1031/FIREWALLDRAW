@@ -523,54 +523,88 @@ class ResultScene extends Phaser.Scene {
   async showRankingResult(myRank) {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
 
+    // ランキング表示用コンテナ
+    this.rankingContainer = this.add.container(0, 0);
+
     // オーバーレイ
     this.rankOverlay = this.add.graphics();
     this.rankOverlay.fillStyle(0x000000, 0.9);
     this.rankOverlay.fillRect(0, 0, WIDTH, HEIGHT);
+    this.rankingContainer.add(this.rankOverlay);
 
     // 結果表示
-    this.add.text(WIDTH / 2, 40, `あなたの順位: ${myRank}位`, {
+    const myRankText = this.add.text(WIDTH / 2, 40, `あなたの順位: ${myRank}位`, {
       fontSize: '24px',
       color: '#ffff00',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
+    this.rankingContainer.add(myRankText);
 
     // ランキング取得
-    const rankings = await window.rankingManager.getTopScores(this.stageId, this.difficulty, 10);
+    console.log('[ResultScene] ランキング取得中...');
+    const result = await window.rankingManager.getTopScores(this.stageId, this.difficulty, 10);
+    console.log('[ResultScene] ランキング結果:', result);
 
-    this.add.text(WIDTH / 2, 80, `Stage ${this.stageId} ランキング TOP10`, {
+    const titleText = this.add.text(WIDTH / 2, 80, `Stage ${this.stageId} ランキング TOP10`, {
       fontSize: '16px',
       color: '#00aaff',
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
+    this.rankingContainer.add(titleText);
 
     // ランキング表示
     let y = 110;
     const headerStyle = { fontSize: '12px', color: '#888888', fontFamily: 'sans-serif' };
-    this.add.text(50, y, '順位', headerStyle);
-    this.add.text(100, y, '名前', headerStyle);
-    this.add.text(WIDTH - 150, y, 'スコア', headerStyle);
-    this.add.text(WIDTH - 60, y, 'タイム', headerStyle);
+    const h1 = this.add.text(50, y, '順位', headerStyle);
+    const h2 = this.add.text(100, y, '名前', headerStyle);
+    const h3 = this.add.text(WIDTH - 150, y, 'スコア', headerStyle);
+    const h4 = this.add.text(WIDTH - 60, y, 'タイム', headerStyle);
+    this.rankingContainer.add([h1, h2, h3, h4]);
     y += 20;
 
-    rankings.forEach((entry, index) => {
-      const rank = index + 1;
-      const isMe = rank === myRank;
-      const color = isMe ? '#ffff00' : '#ffffff';
-      const style = { fontSize: '13px', color: color, fontFamily: 'sans-serif' };
+    // result.rankings が配列かどうか確認
+    const rankings = result.success && Array.isArray(result.rankings) ? result.rankings : [];
+    console.log('[ResultScene] ランキングデータ:', rankings);
 
-      this.add.text(50, y, `${rank}`, style);
-      this.add.text(100, y, entry.playerName, style);
-      this.add.text(WIDTH - 150, y, entry.score.toLocaleString(), style);
-      this.add.text(WIDTH - 60, y, this.formatTime(entry.clearTime), style);
-      y += 22;
-    });
+    if (rankings.length === 0) {
+      const noData = this.add.text(WIDTH / 2, y + 50, 'ランキングデータがありません', {
+        fontSize: '14px',
+        color: '#888888',
+        fontFamily: 'sans-serif'
+      }).setOrigin(0.5);
+      this.rankingContainer.add(noData);
+    } else {
+      rankings.forEach((entry, index) => {
+        const rank = index + 1;
+        const isMe = rank === myRank;
+        const color = isMe ? '#ffff00' : '#ffffff';
+        const style = { fontSize: '13px', color: color, fontFamily: 'sans-serif' };
 
-    // 閉じるボタン
-    this.createButton(WIDTH / 2, HEIGHT - 60, '閉じる', 0x666666, () => {
-      this.rankOverlay.destroy();
+        const name = entry.playerName || '---';
+        console.log('[ResultScene] エントリー', rank, ':', name, entry.score);
+
+        const t1 = this.add.text(50, y, `${rank}`, style);
+        const t2 = this.add.text(100, y, name, style);
+        const t3 = this.add.text(WIDTH - 150, y, entry.score.toLocaleString(), style);
+        const t4 = this.add.text(WIDTH - 60, y, this.formatTime(entry.clearTime), style);
+        this.rankingContainer.add([t1, t2, t3, t4]);
+        y += 22;
+      });
+    }
+
+    // 閉じるボタン（コンテナに追加）
+    const closeBtn = this.createDialogButton(WIDTH / 2, HEIGHT - 60, '閉じる', 0x666666, () => {
+      this.closeRankingResult();
     });
+    this.rankingContainer.add(closeBtn);
+  }
+
+  closeRankingResult() {
+    if (this.rankingContainer) {
+      this.rankingContainer.destroy();
+      this.rankingContainer = null;
+    }
   }
 
   createCelebrationEffect() {
