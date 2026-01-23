@@ -1,0 +1,30 @@
+[
+  {
+    "id": "wall_duration",
+    "name": "壁持続時間",
+    "description": "壁の持続時間を1秒延長",
+    "maxLevel": 5,
+    "costs": [100, 200, 400, 800, 1600]
+  },
+  {
+    "id": "wall_damage",
+    "name": "壁ダメージ",
+    "description": "壁のダメージを20%上昇",
+    "maxLevel": 5,
+    "costs": [150, 300, 600, 1200, 2400]
+  },
+  {
+    "id": "wall_count",
+    "name": "同時壁数",
+    "description": "同時に配置できる壁を1本追加",
+    "maxLevel": 2,
+    "costs": [500, 1500]
+  },
+  {
+    "id": "cpu_hp",
+    "name": "CPU HP",
+    "description": "CPUのHPを2上昇",
+    "maxLevel": 5,
+    "costs": [100, 200, 400, 800, 1600]
+  }
+]

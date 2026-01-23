@@ -1,0 +1,57 @@
+[
+  {
+    "id": "basic",
+    "name": "基本の壁",
+    "damage": 10,
+    "color": "0x00aaff",
+    "slowPercent": 0,
+    "dotDamage": 0,
+    "unlockStage": 0,
+    "purchaseCost": 0
+  },
+  {
+    "id": "fire",
+    "name": "炎の壁",
+    "damage": 15,
+    "color": "0xff6600",
+    "slowPercent": 0,
+    "dotDamage": 3,
+    "dotInterval": 500,
+    "dotDuration": 3000,
+    "unlockStage": 3,
+    "purchaseCost": 300
+  },
+  {
+    "id": "ice",
+    "name": "氷の壁",
+    "damage": 5,
+    "color": "0x00ffff",
+    "slowPercent": 80,
+    "slowDuration": 2000,
+    "dotDamage": 0,
+    "unlockStage": 5,
+    "purchaseCost": 500
+  },
+  {
+    "id": "thunder",
+    "name": "雷の壁",
+    "damage": 20,
+    "color": "0xffff00",
+    "slowPercent": 0,
+    "dotDamage": 0,
+    "unlockStage": 7,
+    "purchaseCost": 700
+  },
+  {
+    "id": "poison",
+    "name": "毒の壁",
+    "damage": 8,
+    "color": "0x9900ff",
+    "slowPercent": 0,
+    "dotDamage": 5,
+    "dotInterval": 1000,
+    "dotDuration": 5000,
+    "unlockStage": 10,
+    "purchaseCost": 1000
+  }
+]

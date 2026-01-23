@@ -1,0 +1,47 @@
+[
+  {
+    "id": "bug_small",
+    "name": "バグ（小）",
+    "hp": 10,
+    "speed": 80,
+    "reward": 5,
+    "width": 24,
+    "height": 24
+  },
+  {
+    "id": "bug_medium",
+    "name": "バグ（中）",
+    "hp": 25,
+    "speed": 60,
+    "reward": 15,
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "worm",
+    "name": "ワーム",
+    "hp": 15,
+    "speed": 120,
+    "reward": 10,
+    "width": 32,
+    "height": 16
+  },
+  {
+    "id": "trojan",
+    "name": "トロイ",
+    "hp": 50,
+    "speed": 40,
+    "reward": 30,
+    "width": 48,
+    "height": 48
+  },
+  {
+    "id": "ransom",
+    "name": "ランサム",
+    "hp": 80,
+    "speed": 50,
+    "reward": 50,
+    "width": 64,
+    "height": 64
+  }
+]
