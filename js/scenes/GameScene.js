@@ -633,11 +633,13 @@ class GameScene extends Phaser.Scene {
     // 各敵と各壁の当たり判定
     const wallsToDestroy = [];
 
-    for (const enemy of this.enemies) {
-      if (enemy.isStunned) continue;
+    try {
+      for (const enemy of this.enemies) {
+        if (!enemy || !enemy.sprite || enemy.isStunned) continue;
 
-      for (const wall of this.walls) {
-        if (wall.checkCollision(enemy)) {
+        for (const wall of this.walls) {
+          if (!wall) continue;
+          if (wall.checkCollision(enemy)) {
           // ボマー：壁を破壊して自爆
           if (enemy.data.special === 'explode_wall') {
             console.log('[GameScene] ボマーが壁を破壊！');
@@ -651,16 +653,25 @@ class GameScene extends Phaser.Scene {
           else if (enemy.data.special === 'shield_once' && enemy.shieldActive) {
             console.log('[GameScene] シールドが壁をすり抜け！');
             enemy.shieldActive = false;
+            // 壁を通過するための短いスタン（次フレームでの再衝突を防ぐ）
+            enemy.isStunned = true;
+            enemy.stunEndTime = Date.now() + 500;
             // シールド消滅エフェクト
-            this.tweens.add({
-              targets: enemy.sprite,
-              alpha: 0.5,
-              duration: 100,
-              yoyo: true
-            });
-            // シールド消滅の視覚効果（色が少し暗くなる）
-            enemy.sprite.setTint(0x888888);
-            continue; // ダメージを受けずにすり抜け
+            try {
+              if (enemy.sprite && enemy.sprite.active) {
+                this.tweens.add({
+                  targets: enemy.sprite,
+                  alpha: 0.5,
+                  duration: 100,
+                  yoyo: true
+                });
+                // シールド消滅の視覚効果（色が少し暗くなる）
+                enemy.sprite.setTint(0x888888);
+              }
+            } catch (e) {
+              console.warn('[GameScene] シールドエフェクトエラー:', e);
+            }
+            break; // この敵の壁チェックを終了
           }
           // 通常の衝突
           else {
@@ -669,6 +680,8 @@ class GameScene extends Phaser.Scene {
           }
         }
       }
+    } catch (e) {
+      console.error('[GameScene] checkCollisions エラー:', e);
     }
 
     // 破壊された壁を削除
