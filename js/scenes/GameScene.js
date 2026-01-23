@@ -669,7 +669,12 @@ class GameScene extends Phaser.Scene {
                     yoyo: true
                   });
                   // シールド消滅の視覚効果（色が少し暗くなる）
-                  enemy.sprite.setTint(0x888888);
+                  if (typeof enemy.sprite.setTint === 'function') {
+                    enemy.sprite.setTint(0x888888);
+                  } else {
+                    // setTintがない場合はアルファで代用
+                    enemy.sprite.alpha = 0.7;
+                  }
                 }
               } catch (e) {
                 console.warn('[GameScene] シールドエフェクトエラー:', e);
