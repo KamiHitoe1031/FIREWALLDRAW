@@ -40,6 +40,41 @@ const PLACEHOLDER_CONFIG = {
     shape: 'rect',
     label: 'ランサム'
   },
+  enemy_bomber: {
+    width: 40,
+    height: 40,
+    color: 0xff6600,  // オレンジ
+    shape: 'circle',
+    label: 'ボマー'
+  },
+  enemy_shield: {
+    width: 20,
+    height: 20,
+    color: 0x00ffff,  // シアン
+    shape: 'circle',
+    label: 'シールド'
+  },
+  enemy_spawner: {
+    width: 48,
+    height: 48,
+    color: 0x9900ff,  // 紫
+    shape: 'rect',
+    label: 'スポナー'
+  },
+  enemy_stealth: {
+    width: 20,
+    height: 20,
+    color: 0x888888,  // 灰色
+    shape: 'circle',
+    label: 'ステルス'
+  },
+  enemy_dasher: {
+    width: 32,
+    height: 32,
+    color: 0xffff00,  // 黄色
+    shape: 'rect',
+    label: 'ダッシャー'
+  },
 
   // === CPU ===
   cpu: {

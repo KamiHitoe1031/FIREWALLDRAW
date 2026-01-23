@@ -637,6 +637,11 @@ class GameScene extends Phaser.Scene {
       for (const enemy of this.enemies) {
         if (!enemy || !enemy.sprite || enemy.isStunned) continue;
 
+        // 壁通過中なら衝突判定をスキップ
+        if (enemy.isPassingThrough) {
+          continue;
+        }
+
         for (const wall of this.walls) {
           if (!wall) continue;
           if (wall.checkCollision(enemy)) {
@@ -653,12 +658,19 @@ class GameScene extends Phaser.Scene {
               break;
             }
             // シールド：1回だけすり抜け（typeでも判定）
-            else if ((enemy.data.special === 'shield_once' || enemy.type === 'shield') && enemy.shieldActive) {
-              console.log('[GameScene] シールドが壁をすり抜け！');
-              enemy.shieldActive = false;
-              // 壁を通過するための短いスタン（次フレームでの再衝突を防ぐ）
-              enemy.isStunned = true;
-              enemy.stunEndTime = Date.now() + 500;
+            else if ((enemy.data.special === 'shield_once' || enemy.type === 'shield') && enemy.shieldActive && !enemy.isPassingThrough) {
+              console.log('[GameScene] シールドすり抜け開始');
+              enemy.shieldActive = false;      // シールド消費
+              enemy.isPassingThrough = true;   // 通過中フラグON
+
+              // 500ms後に通過完了（壁を抜けるのに十分な時間）
+              this.time.delayedCall(500, () => {
+                if (enemy && !enemy.isDead()) {
+                  enemy.isPassingThrough = false;
+                  console.log('[GameScene] シールドすり抜け完了');
+                }
+              });
+
               // シールド消滅エフェクト
               try {
                 if (enemy.sprite && enemy.sprite.active) {
@@ -679,7 +691,7 @@ class GameScene extends Phaser.Scene {
               } catch (e) {
                 console.warn('[GameScene] シールドエフェクトエラー:', e);
               }
-              break; // この敵の壁チェックを終了
+              continue;  // この衝突は無視して次の敵へ
             }
             // 通常の衝突
             else {
@@ -1062,6 +1074,7 @@ class Enemy {
     // 特殊能力用プロパティ
     // シールド：壁1回すり抜け（typeまたはspecialで判定）
     this.shieldActive = (data.special === 'shield_once' || enemyId === 'shield');
+    this.isPassingThrough = false; // 壁通過中フラグ
     console.log('[Enemy] 生成:', enemyId, 'special:', data.special, 'shieldActive:', this.shieldActive);
     this.stealthVisible = true; // ステルス：表示状態
     this.dashActive = false; // ダッシュ：加速中
