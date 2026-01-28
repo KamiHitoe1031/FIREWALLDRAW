@@ -170,21 +170,32 @@ class RankingScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.rankingContainer.add(loading);
 
-    // API呼び出し
-    const result = await window.rankingManager.getTopScores(
-      this.selectedStage,
-      this.selectedDifficulty,
-      20
-    );
+    try {
+      // API呼び出し（タイムアウト付き）
+      const result = await window.rankingManager.getTopScores(
+        this.selectedStage,
+        this.selectedDifficulty,
+        20
+      );
 
-    this.rankingContainer.removeAll(true);
+      // シーンが既に破棄されていたら何もしない
+      if (!this.scene || !this.scene.isActive()) return;
 
-    if (!result.success) {
-      this.showError(result.error || '通信エラーが発生しました');
-      return;
+      this.rankingContainer.removeAll(true);
+
+      if (!result.success) {
+        this.showError(result.error || '通信エラーが発生しました');
+        return;
+      }
+
+      this.displayRankings(result.rankings || []);
+    } catch (e) {
+      console.error('[RankingScene] loadRankings エラー:', e);
+      if (this.scene && this.scene.isActive()) {
+        this.rankingContainer.removeAll(true);
+        this.showError('ランキングの読み込みに失敗しました');
+      }
     }
-
-    this.displayRankings(result.rankings || []);
   }
 
   displayRankings(rankings) {
@@ -373,7 +384,9 @@ class RankingScene extends Phaser.Scene {
     });
 
     container.on('pointerdown', () => {
-      this.scene.start(this.fromScene);
+      this.scene.start(this.fromScene, {
+        difficulty: this.selectedDifficulty
+      });
     });
   }
 }

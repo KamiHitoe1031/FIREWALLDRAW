@@ -24,9 +24,9 @@ class PreloadScene extends Phaser.Scene {
     // === 画像読み込み（存在しなくてもエラーにならない） ===
 
     // 敵スプライト
-    this.load.spritesheet('enemy_bug_small', 'assets/images/enemies/bug_small.png', {
-      frameWidth: 24,
-      frameHeight: 24
+    this.load.spritesheet('enemy_bug_small', 'assets/images/enemies/bug_small.webp', {
+      frameWidth: 48,
+      frameHeight: 48
     });
     this.load.spritesheet('enemy_bug_medium', 'assets/images/enemies/bug_medium.png', {
       frameWidth: 32,
@@ -45,11 +45,11 @@ class PreloadScene extends Phaser.Scene {
       frameHeight: 64
     });
 
-    // CPU
-    this.load.spritesheet('cpu', 'assets/images/ui/cpu.png', {
-      frameWidth: 64,
-      frameHeight: 64
-    });
+    // CPU（HP状態別の個別画像）
+    this.load.image('cpu_happy', 'assets/images/cpu/cpu_happy.webp');
+    this.load.image('cpu_worried', 'assets/images/cpu/cpu_worried.webp');
+    this.load.image('cpu_scared', 'assets/images/cpu/cpu_scared.webp');
+    this.load.image('cpu_critical', 'assets/images/cpu/cpu_critical.webp');
 
     // UI
     this.load.image('hp_bar_bg', 'assets/images/ui/hp_bar_bg.png');
@@ -61,7 +61,7 @@ class PreloadScene extends Phaser.Scene {
     this.load.image('arrow_warning', 'assets/images/ui/arrow_warning.png');
 
     // 背景
-    this.load.image('bg_game', 'assets/images/backgrounds/circuit_board.png');
+    this.load.image('bg_game', 'assets/images/backgrounds/bg1.webp');
     this.load.image('bg_title', 'assets/images/backgrounds/title_bg.png');
     this.load.image('title_logo', 'assets/images/ui/title_logo.png');
 

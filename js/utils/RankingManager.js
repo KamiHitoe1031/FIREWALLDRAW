@@ -29,13 +29,18 @@ class RankingManager {
       };
       console.log('[RankingManager] スコア送信:', requestBody);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const response = await fetch(`${this.apiUrl}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
@@ -46,7 +51,8 @@ class RankingManager {
       return data;
     } catch (error) {
       console.error('[RankingManager] ランキング送信エラー:', error);
-      return { success: false, error: error.message };
+      const msg = error.name === 'AbortError' ? '通信タイムアウト' : error.message;
+      return { success: false, error: msg };
     }
   }
 
@@ -62,7 +68,11 @@ class RankingManager {
       const url = `${this.apiUrl}/rankings?stageId=${stageId}&difficulty=${difficulty}&limit=${limit}`;
       console.log('[RankingManager] ランキング取得:', url);
 
-      const response = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
@@ -73,7 +83,8 @@ class RankingManager {
       return data;
     } catch (error) {
       console.error('[RankingManager] ランキング取得エラー:', error);
-      return { success: false, error: error.message };
+      const msg = error.name === 'AbortError' ? '通信タイムアウト' : error.message;
+      return { success: false, error: msg };
     }
   }
 

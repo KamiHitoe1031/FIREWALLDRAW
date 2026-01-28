@@ -112,6 +112,16 @@ class GameScene extends Phaser.Scene {
     // 描画用Graphics
     this.drawGraphics = this.add.graphics();
 
+    // bug_smallアニメーション定義
+    if (this.textures.exists('enemy_bug_small') && !this.anims.exists('bug_small_idle')) {
+      this.anims.create({
+        key: 'bug_small_idle',
+        frames: this.anims.generateFrameNumbers('enemy_bug_small', { start: 0, end: 1 }),
+        frameRate: 4,
+        repeat: -1
+      });
+    }
+
     // 敵グループ
     this.enemyGroup = this.physics.add.group();
 
@@ -171,30 +181,40 @@ class GameScene extends Phaser.Scene {
   createCPU() {
     const { CPU_X, CPU_Y } = GAME_CONFIG;
 
+    // CPU画像が存在するかチェック
+    this.useCpuImages = this.textures.exists('cpu_happy');
+
     // CPUコンテナ
     this.cpuContainer = this.add.container(CPU_X, CPU_Y);
 
-    // CPU本体（プレースホルダー）
-    const cpuGraphics = this.add.graphics();
-    cpuGraphics.fillStyle(0x00aaff, 1);
-    cpuGraphics.lineStyle(3, 0xffffff, 1);
-    cpuGraphics.fillRect(-32, -32, 64, 64);
-    cpuGraphics.strokeRect(-32, -32, 64, 64);
+    if (this.useCpuImages) {
+      // 画像版CPU
+      this.cpuSprite = this.add.image(0, 0, 'cpu_happy');
+      this.cpuSprite.setDisplaySize(128, 128);
+      this.cpuContainer.add(this.cpuSprite);
+    } else {
+      // プレースホルダー版CPU
+      const cpuGraphics = this.add.graphics();
+      cpuGraphics.fillStyle(0x00aaff, 1);
+      cpuGraphics.lineStyle(3, 0xffffff, 1);
+      cpuGraphics.fillRect(-32, -32, 64, 64);
+      cpuGraphics.strokeRect(-32, -32, 64, 64);
 
-    // 内部パターン
-    cpuGraphics.lineStyle(1, 0xffffff, 0.5);
-    for (let i = -24; i <= 24; i += 8) {
-      cpuGraphics.lineBetween(i, -24, i, 24);
-      cpuGraphics.lineBetween(-24, i, 24, i);
+      // 内部パターン
+      cpuGraphics.lineStyle(1, 0xffffff, 0.5);
+      for (let i = -24; i <= 24; i += 8) {
+        cpuGraphics.lineBetween(i, -24, i, 24);
+        cpuGraphics.lineBetween(-24, i, 24, i);
+      }
+
+      this.cpuContainer.add(cpuGraphics);
+
+      // 顔文字
+      this.cpuFace = this.add.text(0, 0, '😊', {
+        fontSize: '32px'
+      }).setOrigin(0.5);
+      this.cpuContainer.add(this.cpuFace);
     }
-
-    this.cpuContainer.add(cpuGraphics);
-
-    // 顔文字
-    this.cpuFace = this.add.text(0, 0, '😊', {
-      fontSize: '32px'
-    }).setOrigin(0.5);
-    this.cpuContainer.add(this.cpuFace);
 
     // 物理ボディ
     this.physics.add.existing(this.cpuContainer, true);
@@ -204,13 +224,27 @@ class GameScene extends Phaser.Scene {
 
   updateCPUExpression() {
     const ratio = this.cpuHp / this.cpuMaxHp;
-    let expression = '😊';
 
-    if (ratio <= 0.25) expression = '😱';
-    else if (ratio <= 0.5) expression = '😨';
-    else if (ratio <= 0.8) expression = '😰';
+    if (this.useCpuImages && this.cpuSprite) {
+      // 画像版: HP状態に応じたテクスチャ切り替え
+      let textureKey = 'cpu_happy';
+      if (ratio <= 0.25) textureKey = 'cpu_critical';
+      else if (ratio <= 0.5) textureKey = 'cpu_scared';
+      else if (ratio <= 0.75) textureKey = 'cpu_worried';
 
-    this.cpuFace.setText(expression);
+      if (this.cpuSprite.texture.key !== textureKey) {
+        this.cpuSprite.setTexture(textureKey);
+        this.cpuSprite.setDisplaySize(128, 128);
+      }
+    } else if (this.cpuFace) {
+      // プレースホルダー版: 顔文字切り替え
+      let expression = '😊';
+      if (ratio <= 0.25) expression = '😱';
+      else if (ratio <= 0.5) expression = '😨';
+      else if (ratio <= 0.8) expression = '😰';
+
+      this.cpuFace.setText(expression);
+    }
   }
 
   setupInputEvents() {
@@ -1096,6 +1130,11 @@ class Enemy {
 
     this.sprite = scene.assetManager.getPhysicsSprite(x, y, spriteKey, config);
     this.sprite.enemy = this;
+
+    // スプライトシートが読み込まれている場合はアニメーション再生
+    if (enemyId === 'bug_small' && scene.anims.exists('bug_small_idle') && this.sprite.play) {
+      this.sprite.play('bug_small_idle');
+    }
 
     // CPUへ向かう
     this.targetX = GAME_CONFIG.CPU_X;
