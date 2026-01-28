@@ -644,6 +644,10 @@ class GameScene extends Phaser.Scene {
 
         for (const wall of this.walls) {
           if (!wall) continue;
+
+          // 壁通過中なら残りの壁衝突判定もスキップ
+          if (enemy.isPassingThrough) break;
+
           if (wall.checkCollision(enemy)) {
             // デバッグログ
             console.log('[GameScene] 衝突検出:', enemy.type, 'special:', enemy.data.special, 'shieldActive:', enemy.shieldActive);
@@ -658,7 +662,7 @@ class GameScene extends Phaser.Scene {
               break;
             }
             // シールド：1回だけすり抜け（typeでも判定）
-            else if ((enemy.data.special === 'shield_once' || enemy.type === 'shield') && enemy.shieldActive && !enemy.isPassingThrough) {
+            else if ((enemy.data.special === 'shield_once' || enemy.type === 'shield') && enemy.shieldActive) {
               console.log('[GameScene] シールドすり抜け開始');
               enemy.shieldActive = false;      // シールド消費
               enemy.isPassingThrough = true;   // 通過中フラグON
@@ -691,7 +695,7 @@ class GameScene extends Phaser.Scene {
               } catch (e) {
                 console.warn('[GameScene] シールドエフェクトエラー:', e);
               }
-              continue;  // この衝突は無視して次の敵へ
+              break;  // 壁ループを抜けて次の敵へ
             }
             // 通常の衝突
             else {
