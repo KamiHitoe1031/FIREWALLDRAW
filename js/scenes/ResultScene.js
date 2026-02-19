@@ -1,6 +1,6 @@
 /**
  * ResultScene.js
- * リザルト画面（統計・ボーナス・ランキング対応版）
+ * リザルト画面（リッチUI版 - 背景画像・CPUキャラ・ランキングTOP10チェック対応）
  */
 
 class ResultScene extends Phaser.Scene {
@@ -22,6 +22,8 @@ class ResultScene extends Phaser.Scene {
     this.isNewRecord = false;
     this.inputElement = null;
     this.rankingDisplayed = false;
+    this.rankingEligible = false;
+    this.rankingButtonContainer = null;
   }
 
   create() {
@@ -35,6 +37,8 @@ class ResultScene extends Phaser.Scene {
     if (this.result === 'clear') {
       this.processClearSave();
       this.showClearResult();
+      // ランキングTOP10チェック（非同期）
+      this.checkRankingEligibility();
     } else {
       this.showGameOverResult();
     }
@@ -44,25 +48,57 @@ class ResultScene extends Phaser.Scene {
 
     // 総コイン表示
     const totalCoins = SaveManager.getCoins();
-    this.add.text(WIDTH / 2, HEIGHT - 30, `所持コイン: ${totalCoins}`, {
+    const coinContainer = this.add.container(WIDTH / 2, HEIGHT - 25);
+    const coinIcon = this.add.graphics();
+    coinIcon.fillStyle(0xffdd00, 1);
+    coinIcon.fillCircle(-50, 0, 8);
+    coinIcon.fillStyle(0xffaa00, 1);
+    coinIcon.fillCircle(-50, 0, 5);
+    const coinText = this.add.text(0, 0, `${totalCoins}`, {
       fontSize: '14px',
-      color: '#ffff00',
-      fontFamily: 'sans-serif'
+      color: '#ffdd00',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
     }).setOrigin(0.5);
+    coinContainer.add([coinIcon, coinText]);
   }
 
   createBackground() {
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x1a1a2e, 1);
-    graphics.fillRect(0, 0, GAME_CONFIG.WIDTH, GAME_CONFIG.HEIGHT);
+    const { WIDTH, HEIGHT } = GAME_CONFIG;
 
-    graphics.lineStyle(1, 0x333366, 0.3);
-    for (let x = 0; x < GAME_CONFIG.WIDTH; x += 30) {
-      graphics.lineBetween(x, 0, x, GAME_CONFIG.HEIGHT);
+    // bg_game画像を使用（あれば）
+    if (this.textures.exists('bg_game')) {
+      const bg = this.add.image(WIDTH / 2, HEIGHT / 2, 'bg_game');
+      bg.setDisplaySize(WIDTH, HEIGHT);
     }
-    for (let y = 0; y < GAME_CONFIG.HEIGHT; y += 30) {
-      graphics.lineBetween(0, y, GAME_CONFIG.WIDTH, y);
+
+    // ダークオーバーレイ
+    const overlay = this.add.graphics();
+    if (this.result === 'clear') {
+      // クリア: 暗めの青紫オーバーレイ
+      overlay.fillStyle(0x0a0a1e, 0.75);
+    } else {
+      // ゲームオーバー: 暗い赤みオーバーレイ
+      overlay.fillStyle(0x1a0a0a, 0.82);
     }
+    overlay.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // 装飾: コーナーライン
+    const deco = this.add.graphics();
+    const accentColor = this.result === 'clear' ? 0x00aaff : 0xff3333;
+    deco.lineStyle(2, accentColor, 0.4);
+    // 左上
+    deco.lineBetween(10, 10, 60, 10);
+    deco.lineBetween(10, 10, 10, 60);
+    // 右上
+    deco.lineBetween(WIDTH - 10, 10, WIDTH - 60, 10);
+    deco.lineBetween(WIDTH - 10, 10, WIDTH - 10, 60);
+    // 左下
+    deco.lineBetween(10, HEIGHT - 10, 60, HEIGHT - 10);
+    deco.lineBetween(10, HEIGHT - 10, 10, HEIGHT - 60);
+    // 右下
+    deco.lineBetween(WIDTH - 10, HEIGHT - 10, WIDTH - 60, HEIGHT - 10);
+    deco.lineBetween(WIDTH - 10, HEIGHT - 10, WIDTH - 10, HEIGHT - 60);
   }
 
   formatTime(ms) {
@@ -89,243 +125,429 @@ class ResultScene extends Phaser.Scene {
     SaveManager.save(data);
   }
 
+  /**
+   * ランキングTOP10入り判定（非同期）
+   */
+  async checkRankingEligibility() {
+    if (!window.rankingManager) {
+      // ランキング機能なし → ボタン表示しない
+      return;
+    }
+
+    try {
+      const result = await window.rankingManager.getTopScores(this.stageId, this.difficulty, 10);
+
+      if (!result.success || !Array.isArray(result.rankings)) {
+        // 取得失敗 → 念のため表示（恩恵的判断）
+        this.rankingEligible = true;
+      } else if (result.rankings.length < 10) {
+        // 10件未満 → 必ず入れる
+        this.rankingEligible = true;
+      } else {
+        // 最下位スコアと比較
+        const lowestScore = result.rankings[result.rankings.length - 1].score;
+        this.rankingEligible = this.score > lowestScore;
+      }
+    } catch (e) {
+      console.warn('[ResultScene] ランキングチェック失敗:', e);
+      this.rankingEligible = true; // エラー時は表示
+    }
+
+    // ボタンを表示/非表示
+    if (this.rankingEligible && this.rankingButtonContainer) {
+      this.rankingButtonContainer.setVisible(true);
+      this.rankingButtonContainer.setAlpha(0);
+      this.tweens.add({
+        targets: this.rankingButtonContainer,
+        alpha: 1,
+        duration: 300,
+        ease: 'Power2'
+      });
+    }
+  }
+
   showClearResult() {
     const { WIDTH } = GAME_CONFIG;
     const diffName = DIFFICULTY_SETTINGS[this.difficulty].name;
 
-    // タイトル
-    const title = this.add.text(WIDTH / 2, 35, `STAGE ${this.stageId} CLEAR!`, {
-      fontSize: '32px',
-      color: '#00ff00',
+    // === CPUキャラ表示 ===
+    this.showCpuCharacter('cpu_happy', 70, 55, 0.55);
+
+    // === タイトル ===
+    // 影テキスト
+    this.add.text(WIDTH / 2 + 2, 32, `STAGE ${this.stageId} CLEAR!`, {
+      fontSize: '30px',
+      color: '#003300',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setAlpha(0.5);
+
+    const title = this.add.text(WIDTH / 2, 30, `STAGE ${this.stageId} CLEAR!`, {
+      fontSize: '30px',
+      color: '#00ff66',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
     this.tweens.add({
       targets: title,
-      scale: { from: 0.5, to: 1 },
+      scale: { from: 0.3, to: 1 },
       alpha: { from: 0, to: 1 },
-      duration: 500,
+      duration: 600,
       ease: 'Back.easeOut'
     });
 
-    // 難易度表示
-    this.add.text(WIDTH / 2, 65, `【${diffName}】`, {
-      fontSize: '14px',
-      color: '#aaaaaa',
+    // 難易度バッジ
+    const badgeContainer = this.add.container(WIDTH / 2, 58);
+    const badge = this.add.graphics();
+    badge.fillStyle(0x334455, 0.8);
+    badge.fillRoundedRect(-40, -10, 80, 20, 10);
+    badge.lineStyle(1, 0x00aaff, 0.6);
+    badge.strokeRoundedRect(-40, -10, 80, 20, 10);
+    const badgeText = this.add.text(0, 0, diffName, {
+      fontSize: '11px',
+      color: '#88ccff',
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
+    badgeContainer.add([badge, badgeText]);
 
-    // 統計情報表示
-    let y = 95;
-    const leftX = 80;
-    const rightX = WIDTH - 80;
+    // === 統計パネル ===
+    const panelX = WIDTH / 2;
+    const panelY = 78;
+    const panelW = WIDTH - 80;
+    const panelH = 200;
 
-    // 区切り線
-    const line1 = this.add.graphics();
-    line1.lineStyle(1, 0x444466, 1);
-    line1.lineBetween(40, y - 5, WIDTH - 40, y - 5);
+    // パネル背景
+    const panel = this.add.graphics();
+    panel.fillStyle(0x111133, 0.7);
+    panel.fillRoundedRect(panelX - panelW / 2, panelY, panelW, panelH, 8);
+    panel.lineStyle(1, 0x334466, 0.8);
+    panel.strokeRoundedRect(panelX - panelW / 2, panelY, panelW, panelH, 8);
+
+    // パネル上部のアクセントライン
+    const accentLine = this.add.graphics();
+    accentLine.fillStyle(0x00aaff, 1);
+    accentLine.fillRoundedRect(panelX - panelW / 2, panelY, panelW, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
+
+    // 統計情報
+    let y = panelY + 18;
+    const leftX = panelX - panelW / 2 + 25;
+    const rightX = panelX + panelW / 2 - 25;
+    const labelStyle = { fontSize: '13px', color: '#8899aa', fontFamily: 'sans-serif' };
+    const valueStyle = { fontSize: '13px', color: '#ffffff', fontFamily: 'sans-serif' };
 
     // クリアタイム
-    this.add.text(leftX, y, 'クリアタイム', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'sans-serif' });
-    this.add.text(rightX, y, this.formatTime(this.stats.clearTime), { fontSize: '13px', color: '#ffffff', fontFamily: 'sans-serif' }).setOrigin(1, 0);
+    this.addStatRow(leftX, rightX, y, 'CLEAR TIME', this.formatTime(this.stats.clearTime), labelStyle, valueStyle);
     y += 22;
 
     // 撃破数
-    this.add.text(leftX, y, '撃破数', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'sans-serif' });
-    this.add.text(rightX, y, `${this.stats.totalKills}体`, { fontSize: '13px', color: '#ffffff', fontFamily: 'sans-serif' }).setOrigin(1, 0);
+    this.addStatRow(leftX, rightX, y, 'KILLS', `${this.stats.totalKills}`, labelStyle, valueStyle);
     y += 22;
 
     // 使用した壁
-    this.add.text(leftX, y, '使用した壁', { fontSize: '13px', color: '#aaaaaa', fontFamily: 'sans-serif' });
-    const wallColor = this.stats.wallsUsed <= this.targetWalls ? '#00ff00' : '#ffffff';
-    this.add.text(rightX, y, `${this.stats.wallsUsed}本 / 目標${this.targetWalls}本`, { fontSize: '13px', color: wallColor, fontFamily: 'sans-serif' }).setOrigin(1, 0);
-    y += 30;
+    const wallValStyle = {
+      fontSize: '13px',
+      color: this.stats.wallsUsed <= this.targetWalls ? '#00ff66' : '#ffffff',
+      fontFamily: 'sans-serif'
+    };
+    this.addStatRow(leftX, rightX, y, 'WALLS USED', `${this.stats.wallsUsed} / ${this.targetWalls}`, labelStyle, wallValStyle);
+    y += 28;
 
     // ボーナスセクション
     if (this.bonuses) {
-      const line2 = this.add.graphics();
-      line2.lineStyle(1, 0x444466, 1);
-      line2.lineBetween(40, y - 5, WIDTH - 40, y - 5);
+      // ボーナス区切り線
+      const bonusLine = this.add.graphics();
+      bonusLine.lineStyle(1, 0x334466, 0.6);
+      bonusLine.lineBetween(leftX, y - 4, rightX, y - 4);
 
-      this.add.text(leftX, y, 'ボーナス', { fontSize: '14px', color: '#00aaff', fontFamily: 'sans-serif', fontStyle: 'bold' });
-      y += 24;
+      const bonusLabel = this.add.text(leftX, y, 'BONUS', {
+        fontSize: '11px',
+        color: '#00aaff',
+        fontFamily: 'sans-serif',
+        fontStyle: 'bold'
+      });
+      y += 18;
 
-      // 壁エコノミーボーナス
-      if (this.bonuses.wallEconomy.rank !== '-') {
-        this.add.text(leftX + 10, y, `・壁エコノミー（${this.bonuses.wallEconomy.rank}評価）`, { fontSize: '12px', color: '#ffffff', fontFamily: 'sans-serif' });
-        this.add.text(rightX, y, '✓', { fontSize: '14px', color: '#00ff00', fontFamily: 'sans-serif' }).setOrigin(1, 0);
-        y += 20;
+      if (this.bonuses.wallEconomy && this.bonuses.wallEconomy.rank !== '-') {
+        this.addBonusRow(leftX + 10, rightX, y, `Wall Economy (${this.bonuses.wallEconomy.rank})`);
+        y += 18;
       }
-
-      // ノーダメージボーナス
       if (this.bonuses.noDamage) {
-        this.add.text(leftX + 10, y, '・ノーダメージ', { fontSize: '12px', color: '#ffffff', fontFamily: 'sans-serif' });
-        this.add.text(rightX, y, '✓', { fontSize: '14px', color: '#00ff00', fontFamily: 'sans-serif' }).setOrigin(1, 0);
-        y += 20;
+        this.addBonusRow(leftX + 10, rightX, y, 'No Damage');
+        y += 18;
       }
-
-      // マルチキルボーナス
       if (this.bonuses.multiKill > 0) {
-        this.add.text(leftX + 10, y, `・マルチキル ×${this.bonuses.multiKill}回`, { fontSize: '12px', color: '#ffffff', fontFamily: 'sans-serif' });
-        this.add.text(rightX, y, '✓', { fontSize: '14px', color: '#00ff00', fontFamily: 'sans-serif' }).setOrigin(1, 0);
-        y += 20;
+        this.addBonusRow(leftX + 10, rightX, y, `Multi Kill x${this.bonuses.multiKill}`);
+        y += 18;
       }
     }
-    y += 10;
 
-    // 最終区切り線
-    const line3 = this.add.graphics();
-    line3.lineStyle(2, 0x00aaff, 1);
-    line3.lineBetween(40, y, WIDTH - 40, y);
-    y += 15;
+    // === スコアセクション ===
+    const scoreY = panelY + panelH + 20;
 
-    // TOTAL SCORE
-    this.add.text(WIDTH / 2, y, 'TOTAL SCORE', { fontSize: '14px', color: '#aaaaaa', fontFamily: 'sans-serif' }).setOrigin(0.5);
-    y += 20;
+    this.add.text(WIDTH / 2, scoreY, 'TOTAL SCORE', {
+      fontSize: '12px',
+      color: '#8899aa',
+      fontFamily: 'sans-serif',
+      letterSpacing: 4
+    }).setOrigin(0.5);
 
-    const scoreText = this.add.text(WIDTH / 2, y, this.score.toLocaleString(), {
-      fontSize: '36px',
-      color: '#ffff00',
+    // スコアカウントアップアニメーション
+    const scoreText = this.add.text(WIDTH / 2, scoreY + 28, '0', {
+      fontSize: '38px',
+      color: '#ffdd00',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
+    // カウントアップ演出
+    this.tweens.addCounter({
+      from: 0,
+      to: this.score,
+      duration: 1200,
+      ease: 'Power2',
+      onUpdate: (tween) => {
+        const val = Math.floor(tween.getValue());
+        scoreText.setText(val.toLocaleString());
+      }
+    });
+
     // NEW RECORD表示
     if (this.isNewRecord) {
-      const newRecordText = this.add.text(WIDTH / 2 + 100, y, 'NEW!', {
-        fontSize: '16px',
-        color: '#ff00ff',
+      const newRecordBg = this.add.graphics();
+      newRecordBg.fillStyle(0xff00ff, 0.2);
+      newRecordBg.fillRoundedRect(WIDTH / 2 + 80, scoreY + 15, 60, 24, 12);
+
+      const newRecordText = this.add.text(WIDTH / 2 + 110, scoreY + 27, 'NEW!', {
+        fontSize: '14px',
+        color: '#ff66ff',
         fontFamily: 'sans-serif',
         fontStyle: 'bold'
-      }).setOrigin(0, 0.5);
+      }).setOrigin(0.5);
 
       this.tweens.add({
-        targets: newRecordText,
+        targets: [newRecordText, newRecordBg],
         alpha: { from: 0.5, to: 1 },
-        duration: 500,
+        scale: { from: 0.9, to: 1.1 },
+        duration: 400,
         yoyo: true,
         repeat: -1
       });
     }
 
     // 報酬表示
-    y += 35;
-    this.add.text(WIDTH / 2, y, `+${this.reward} COINS`, {
-      fontSize: '18px',
-      color: '#ffff00',
-      fontFamily: 'sans-serif'
+    const rewardY = scoreY + 60;
+    const rewardContainer = this.add.container(WIDTH / 2, rewardY);
+    const rewardBg = this.add.graphics();
+    rewardBg.fillStyle(0x443300, 0.5);
+    rewardBg.fillRoundedRect(-60, -12, 120, 24, 12);
+    const rewardText = this.add.text(0, 0, `+ ${this.reward} COINS`, {
+      fontSize: '15px',
+      color: '#ffdd00',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
     }).setOrigin(0.5);
+    rewardContainer.add([rewardBg, rewardText]);
+
+    rewardContainer.setAlpha(0);
+    this.tweens.add({
+      targets: rewardContainer,
+      alpha: 1,
+      y: rewardY - 5,
+      duration: 500,
+      delay: 1300,
+      ease: 'Power2'
+    });
 
     // パーティクル風エフェクト
     this.createCelebrationEffect();
   }
 
   showGameOverResult() {
-    const { WIDTH } = GAME_CONFIG;
+    const { WIDTH, HEIGHT } = GAME_CONFIG;
     const diffName = DIFFICULTY_SETTINGS[this.difficulty].name;
 
-    // タイトル
-    const title = this.add.text(WIDTH / 2, 80, 'GAME OVER', {
-      fontSize: '48px',
-      color: '#ff0000',
+    // === CPUキャラ表示（パニック） ===
+    const cpuSprite = this.showCpuCharacter('cpu_critical', WIDTH / 2, 120, 0.7);
+
+    // CPUを震わせる
+    if (cpuSprite) {
+      this.tweens.add({
+        targets: cpuSprite,
+        x: cpuSprite.x + 3,
+        duration: 50,
+        yoyo: true,
+        repeat: -1
+      });
+    }
+
+    // === GAME OVER タイトル ===
+    // 影
+    this.add.text(WIDTH / 2 + 3, 203, 'GAME OVER', {
+      fontSize: '44px',
+      color: '#330000',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setAlpha(0.6);
+
+    const title = this.add.text(WIDTH / 2, 200, 'GAME OVER', {
+      fontSize: '44px',
+      color: '#ff3333',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
     this.tweens.add({
       targets: title,
-      scale: { from: 1.5, to: 1 },
+      scale: { from: 2, to: 1 },
       alpha: { from: 0, to: 1 },
-      duration: 500,
-      ease: 'Power2'
+      duration: 600,
+      ease: 'Power3'
     });
 
-    // ステージ情報
-    this.add.text(WIDTH / 2, 130, `ステージ ${this.stageId}【${diffName}】`, {
-      fontSize: '18px',
-      color: '#aaaaaa',
-      fontFamily: 'sans-serif'
-    }).setOrigin(0.5);
-
     // 敗北メッセージ
-    this.add.text(WIDTH / 2, 165, 'CPUがウイルスに侵食された...', {
-      fontSize: '16px',
-      color: '#888888',
+    const msgText = this.add.text(WIDTH / 2, 240, 'CPUがウイルスに侵食された...', {
+      fontSize: '13px',
+      color: '#666677',
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+    msgText.setAlpha(0);
+    this.tweens.add({
+      targets: msgText,
+      alpha: 0.8,
+      duration: 500,
+      delay: 600
+    });
+
+    // === ステージ情報 ===
+    this.add.text(WIDTH / 2, 275, `Stage ${this.stageId}  [${diffName}]`, {
+      fontSize: '14px',
+      color: '#8888aa',
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
 
-    // スコア表示
-    this.add.text(WIDTH / 2, 220, `SCORE: ${this.score.toLocaleString()}`, {
-      fontSize: '28px',
-      color: '#ffff00',
-      fontFamily: 'sans-serif',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+    // === 情報パネル ===
+    const panelW = 320;
+    const panelH = 120;
+    const panelX = WIDTH / 2;
+    const panelY = 300;
 
-    // ウェーブ到達表示
-    this.add.text(WIDTH / 2, 260, `WAVE: ${this.waveReached}/${this.totalWaves}`, {
-      fontSize: '18px',
-      color: '#aaaaaa',
-      fontFamily: 'sans-serif'
-    }).setOrigin(0.5);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x110a0a, 0.6);
+    panel.fillRoundedRect(panelX - panelW / 2, panelY, panelW, panelH, 8);
+    panel.lineStyle(1, 0x442222, 0.6);
+    panel.strokeRoundedRect(panelX - panelW / 2, panelY, panelW, panelH, 8);
+    // 赤いアクセントライン
+    panel.fillStyle(0xff3333, 1);
+    panel.fillRoundedRect(panelX - panelW / 2, panelY, panelW, 3, { tl: 8, tr: 8, bl: 0, br: 0 });
 
-    // 統計情報
-    if (this.stats) {
-      let y = 300;
-      this.add.text(WIDTH / 2, y, `撃破数: ${this.stats.totalKills}体 / 使用壁: ${this.stats.wallsUsed}本`, {
-        fontSize: '14px',
-        color: '#666666',
-        fontFamily: 'sans-serif'
-      }).setOrigin(0.5);
+    let y = panelY + 18;
+    const leftX = panelX - panelW / 2 + 20;
+    const rightX = panelX + panelW / 2 - 20;
+    const labelStyle = { fontSize: '13px', color: '#887777', fontFamily: 'sans-serif' };
+    const valueStyle = { fontSize: '13px', color: '#ddcccc', fontFamily: 'sans-serif' };
+
+    // スコア
+    this.addStatRow(leftX, rightX, y, 'SCORE', this.score.toLocaleString(), labelStyle,
+      { fontSize: '13px', color: '#ffdd00', fontFamily: 'sans-serif', fontStyle: 'bold' });
+    y += 24;
+
+    // ウェーブ到達
+    this.addStatRow(leftX, rightX, y, 'WAVE', `${this.waveReached} / ${this.totalWaves}`, labelStyle, valueStyle);
+    y += 24;
+
+    // 撃破数・壁
+    this.addStatRow(leftX, rightX, y, 'KILLS / WALLS', `${this.stats.totalKills} / ${this.stats.wallsUsed}`, labelStyle, valueStyle);
+  }
+
+  /**
+   * CPUキャラクターを表示
+   */
+  showCpuCharacter(textureKey, x, y, scale) {
+    if (this.textures.exists(textureKey)) {
+      const sprite = this.add.image(x, y, textureKey);
+      sprite.setScale(scale);
+      // ゆるいボブアニメーション
+      this.tweens.add({
+        targets: sprite,
+        y: y - 4,
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+      return sprite;
     }
+    return null;
+  }
+
+  /**
+   * 統計行を追加
+   */
+  addStatRow(leftX, rightX, y, label, value, labelStyle, valueStyle) {
+    this.add.text(leftX, y, label, labelStyle);
+    this.add.text(rightX, y, value, valueStyle).setOrigin(1, 0);
+  }
+
+  /**
+   * ボーナス行を追加
+   */
+  addBonusRow(leftX, rightX, y, text) {
+    this.add.text(leftX, y, text, { fontSize: '11px', color: '#aabbcc', fontFamily: 'sans-serif' });
+    this.add.text(rightX, y, '+', { fontSize: '12px', color: '#00ff66', fontFamily: 'sans-serif', fontStyle: 'bold' }).setOrigin(1, 0);
   }
 
   createButtons() {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
-    const buttonY = HEIGHT - 90;
+    const buttonY = HEIGHT - 60;
 
     if (this.result === 'clear') {
-      // クリア時: ランキング登録、リトライ、タイトルへ
+      // ランキングボタン（非同期チェック後にフェードイン）
+      this.rankingButtonContainer = this.createStyledButton(
+        WIDTH / 2 - 180, buttonY, 'ランキング登録', 0x006688, 0x00aaff, () => this.showRankingInput()
+      );
+      this.rankingButtonContainer.setVisible(false); // 初期非表示
+
       if (this.stageId < 10) {
-        this.createButton(WIDTH / 2 - 180, buttonY, 'ランキング登録', 0x006688, () => this.showRankingInput());
-        this.createButton(WIDTH / 2 - 45, buttonY, '次へ', 0x0066aa, () => this.goNextStage());
-        this.createButton(WIDTH / 2 + 65, buttonY, 'リトライ', 0x444466, () => this.retry());
-        this.createButton(WIDTH / 2 + 175, buttonY, 'タイトル', 0x666666, () => this.goToTitle());
+        this.createStyledButton(WIDTH / 2 - 50, buttonY, '次のステージ', 0x005599, 0x00aaff, () => this.goNextStage());
+        this.createStyledButton(WIDTH / 2 + 75, buttonY, 'リトライ', 0x333355, 0x6677aa, () => this.retry());
+        this.createStyledButton(WIDTH / 2 + 180, buttonY, 'タイトル', 0x333344, 0x556677, () => this.goToTitle());
       } else {
-        // ステージ10クリア
-        this.add.text(WIDTH / 2, buttonY - 40, 'おめでとう！全ステージクリア！', {
-          fontSize: '16px',
+        // 全クリ
+        this.add.text(WIDTH / 2, buttonY - 35, 'ALL STAGES CLEAR!', {
+          fontSize: '15px',
           color: '#00ffff',
           fontFamily: 'sans-serif',
           fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.createButton(WIDTH / 2 - 130, buttonY, 'ランキング登録', 0x006688, () => this.showRankingInput());
-        this.createButton(WIDTH / 2, buttonY, 'リトライ', 0x444466, () => this.retry());
-        this.createButton(WIDTH / 2 + 130, buttonY, 'タイトル', 0x666666, () => this.goToTitle());
+        this.createStyledButton(WIDTH / 2 - 10, buttonY, 'リトライ', 0x333355, 0x6677aa, () => this.retry());
+        this.createStyledButton(WIDTH / 2 + 110, buttonY, 'タイトル', 0x333344, 0x556677, () => this.goToTitle());
       }
     } else {
       // ゲームオーバー
-      this.createButton(WIDTH / 2 - 80, buttonY, 'リトライ', 0x444466, () => this.retry());
-      this.createButton(WIDTH / 2 + 80, buttonY, 'タイトルへ', 0x666666, () => this.goToTitle());
+      this.createStyledButton(WIDTH / 2 - 70, buttonY, 'リトライ', 0x443333, 0xff6666, () => this.retry());
+      this.createStyledButton(WIDTH / 2 + 70, buttonY, 'タイトルへ', 0x333344, 0x556677, () => this.goToTitle());
     }
   }
 
-  createButton(x, y, label, color, onClick) {
+  /**
+   * スタイル付きボタン生成
+   */
+  createStyledButton(x, y, label, bgColor, borderColor, onClick) {
     const width = 100;
-    const height = 36;
+    const height = 34;
 
     const container = this.add.container(x, y);
 
     const bg = this.add.graphics();
-    bg.fillStyle(color, 1);
-    bg.lineStyle(2, 0xffffff, 1);
-    bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
-    bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+    bg.fillStyle(bgColor, 0.9);
+    bg.lineStyle(1, borderColor, 0.8);
+    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
 
     const text = this.add.text(0, 0, label, {
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#ffffff',
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
@@ -336,18 +558,20 @@ class ResultScene extends Phaser.Scene {
 
     container.on('pointerover', () => {
       bg.clear();
-      bg.fillStyle(color + 0x222222, 1);
-      bg.lineStyle(2, 0xffff00, 1);
-      bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
-      bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+      bg.fillStyle(bgColor + 0x222222, 0.95);
+      bg.lineStyle(2, 0xffffff, 1);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
+      text.setColor('#ffff00');
     });
 
     container.on('pointerout', () => {
       bg.clear();
-      bg.fillStyle(color, 1);
-      bg.lineStyle(2, 0xffffff, 1);
-      bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
-      bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+      bg.fillStyle(bgColor, 0.9);
+      bg.lineStyle(1, borderColor, 0.8);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
+      text.setColor('#ffffff');
     });
 
     container.on('pointerdown', onClick);
@@ -369,23 +593,26 @@ class ResultScene extends Phaser.Scene {
     this.dialogContainer = this.add.container(WIDTH / 2, HEIGHT / 2);
 
     const dialogBg = this.add.graphics();
-    dialogBg.fillStyle(0x222244, 1);
-    dialogBg.lineStyle(2, 0x00aaff, 1);
+    dialogBg.fillStyle(0x1a1a3a, 1);
+    dialogBg.lineStyle(2, 0x00aaff, 0.8);
     dialogBg.fillRoundedRect(-150, -100, 300, 200, 10);
     dialogBg.strokeRoundedRect(-150, -100, 300, 200, 10);
+    // アクセントライン
+    dialogBg.fillStyle(0x00aaff, 1);
+    dialogBg.fillRect(-150, -100, 300, 3);
     this.dialogContainer.add(dialogBg);
 
-    const titleText = this.add.text(0, -70, 'ランキング登録', {
-      fontSize: '18px',
-      color: '#ffffff',
+    const titleText = this.add.text(0, -70, 'RANKING ENTRY', {
+      fontSize: '16px',
+      color: '#00ccff',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
     this.dialogContainer.add(titleText);
 
-    const promptText = this.add.text(0, -40, '名前を入力してください（12文字まで）', {
-      fontSize: '12px',
-      color: '#aaaaaa',
+    const promptText = this.add.text(0, -42, '12 characters max', {
+      fontSize: '11px',
+      color: '#8899aa',
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
     this.dialogContainer.add(promptText);
@@ -398,7 +625,7 @@ class ResultScene extends Phaser.Scene {
     this.inputElement.type = 'text';
     this.inputElement.maxLength = 12;
     this.inputElement.value = window.rankingManager ? window.rankingManager.getPlayerName() : '';
-    this.inputElement.placeholder = 'プレイヤー名';
+    this.inputElement.placeholder = 'Player Name';
     this.inputElement.style.cssText = `
       position: absolute;
       left: ${rect.left + WIDTH / 2 - 100}px;
@@ -409,15 +636,16 @@ class ResultScene extends Phaser.Scene {
       text-align: center;
       border: 2px solid #00aaff;
       border-radius: 5px;
-      background: #111122;
+      background: #0a0a20;
       color: #ffffff;
       z-index: 1000;
+      outline: none;
     `;
     document.body.appendChild(this.inputElement);
     this.inputElement.focus();
 
     // 登録ボタン
-    const submitBtn = this.createDialogButton(0, 50, '登録', 0x00aa00, async () => {
+    const submitBtn = this.createDialogButton(0, 50, 'SUBMIT', 0x005500, async () => {
       const name = this.inputElement.value.trim();
       if (name.length === 0) {
         alert('名前を入力してください');
@@ -428,7 +656,7 @@ class ResultScene extends Phaser.Scene {
     this.dialogContainer.add(submitBtn);
 
     // キャンセルボタン
-    const cancelBtn = this.createDialogButton(0, 90, 'キャンセル', 0x666666, () => {
+    const cancelBtn = this.createDialogButton(0, 90, 'CANCEL', 0x444444, () => {
       this.closeRankingInput();
     });
     this.dialogContainer.add(cancelBtn);
@@ -442,14 +670,15 @@ class ResultScene extends Phaser.Scene {
 
     const bg = this.add.graphics();
     bg.fillStyle(color, 1);
-    bg.lineStyle(2, 0xffffff, 1);
-    bg.fillRoundedRect(-width/2, -height/2, width, height, 6);
-    bg.strokeRoundedRect(-width/2, -height/2, width, height, 6);
+    bg.lineStyle(1, 0x888888, 0.6);
+    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
 
     const text = this.add.text(0, 0, label, {
-      fontSize: '14px',
+      fontSize: '12px',
       color: '#ffffff',
-      fontFamily: 'sans-serif'
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
     }).setOrigin(0.5);
 
     container.add([bg, text]);
@@ -460,16 +689,16 @@ class ResultScene extends Phaser.Scene {
       bg.clear();
       bg.fillStyle(color + 0x222222, 1);
       bg.lineStyle(2, 0xffff00, 1);
-      bg.fillRoundedRect(-width/2, -height/2, width, height, 6);
-      bg.strokeRoundedRect(-width/2, -height/2, width, height, 6);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
     });
 
     container.on('pointerout', () => {
       bg.clear();
       bg.fillStyle(color, 1);
-      bg.lineStyle(2, 0xffffff, 1);
-      bg.fillRoundedRect(-width/2, -height/2, width, height, 6);
-      bg.strokeRoundedRect(-width/2, -height/2, width, height, 6);
+      bg.lineStyle(1, 0x888888, 0.6);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
     });
 
     container.on('pointerdown', onClick);
@@ -523,54 +752,63 @@ class ResultScene extends Phaser.Scene {
   async showRankingResult(myRank) {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
 
-    // ランキング表示用コンテナ
     this.rankingContainer = this.add.container(0, 0);
 
     // オーバーレイ
     this.rankOverlay = this.add.graphics();
-    this.rankOverlay.fillStyle(0x000000, 0.9);
+    this.rankOverlay.fillStyle(0x000011, 0.92);
     this.rankOverlay.fillRect(0, 0, WIDTH, HEIGHT);
     this.rankingContainer.add(this.rankOverlay);
 
-    // 結果表示
-    const myRankText = this.add.text(WIDTH / 2, 40, `あなたの順位: ${myRank}位`, {
-      fontSize: '24px',
-      color: '#ffff00',
+    // 順位表示
+    const myRankText = this.add.text(WIDTH / 2, 35, `#${myRank}`, {
+      fontSize: '36px',
+      color: '#ffdd00',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
     this.rankingContainer.add(myRankText);
 
-    // ランキング取得
-    console.log('[ResultScene] ランキング取得中...');
-    const result = await window.rankingManager.getTopScores(this.stageId, this.difficulty, 10);
-    console.log('[ResultScene] ランキング結果:', result);
-
-    const titleText = this.add.text(WIDTH / 2, 80, `Stage ${this.stageId} ランキング TOP10`, {
-      fontSize: '16px',
-      color: '#00aaff',
+    const rankLabel = this.add.text(WIDTH / 2, 62, 'YOUR RANK', {
+      fontSize: '11px',
+      color: '#8899aa',
       fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+    this.rankingContainer.add(rankLabel);
+
+    // ランキング取得
+    const result = await window.rankingManager.getTopScores(this.stageId, this.difficulty, 10);
+
+    const titleText = this.add.text(WIDTH / 2, 90, `Stage ${this.stageId} TOP 10`, {
+      fontSize: '14px',
+      color: '#00aaff',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
     }).setOrigin(0.5);
     this.rankingContainer.add(titleText);
 
-    // ランキング表示
-    let y = 110;
-    const headerStyle = { fontSize: '12px', color: '#888888', fontFamily: 'sans-serif' };
-    const h1 = this.add.text(50, y, '順位', headerStyle);
-    const h2 = this.add.text(100, y, '名前', headerStyle);
-    const h3 = this.add.text(WIDTH - 150, y, 'スコア', headerStyle);
-    const h4 = this.add.text(WIDTH - 60, y, 'タイム', headerStyle);
+    // テーブルヘッダー
+    let y = 115;
+    const headerStyle = { fontSize: '10px', color: '#556677', fontFamily: 'sans-serif' };
+    const h1 = this.add.text(50, y, '#', headerStyle);
+    const h2 = this.add.text(80, y, 'NAME', headerStyle);
+    const h3 = this.add.text(WIDTH - 150, y, 'SCORE', headerStyle);
+    const h4 = this.add.text(WIDTH - 60, y, 'TIME', headerStyle);
     this.rankingContainer.add([h1, h2, h3, h4]);
-    y += 20;
 
-    // result.rankings が配列かどうか確認
+    // 区切り線
+    const headerLine = this.add.graphics();
+    headerLine.lineStyle(1, 0x334455, 0.5);
+    headerLine.lineBetween(40, y + 14, WIDTH - 40, y + 14);
+    this.rankingContainer.add(headerLine);
+    y += 22;
+
     const rankings = result.success && Array.isArray(result.rankings) ? result.rankings : [];
-    console.log('[ResultScene] ランキングデータ:', rankings);
 
     if (rankings.length === 0) {
-      const noData = this.add.text(WIDTH / 2, y + 50, 'ランキングデータがありません', {
+      const noData = this.add.text(WIDTH / 2, y + 50, 'No ranking data', {
         fontSize: '14px',
-        color: '#888888',
+        color: '#556677',
         fontFamily: 'sans-serif'
       }).setOrigin(0.5);
       this.rankingContainer.add(noData);
@@ -578,14 +816,20 @@ class ResultScene extends Phaser.Scene {
       rankings.forEach((entry, index) => {
         const rank = index + 1;
         const isMe = rank === myRank;
-        const color = isMe ? '#ffff00' : '#ffffff';
-        const style = { fontSize: '13px', color: color, fontFamily: 'sans-serif' };
+        const color = isMe ? '#ffdd00' : '#ccddee';
+        const style = { fontSize: '12px', color: color, fontFamily: 'sans-serif' };
+
+        // ハイライト行
+        if (isMe) {
+          const hlBg = this.add.graphics();
+          hlBg.fillStyle(0xffdd00, 0.08);
+          hlBg.fillRect(40, y - 2, WIDTH - 80, 18);
+          this.rankingContainer.add(hlBg);
+        }
 
         const name = entry.playerName || '---';
-        console.log('[ResultScene] エントリー', rank, ':', name, entry.score);
-
         const t1 = this.add.text(50, y, `${rank}`, style);
-        const t2 = this.add.text(100, y, name, style);
+        const t2 = this.add.text(80, y, name, style);
         const t3 = this.add.text(WIDTH - 150, y, entry.score.toLocaleString(), style);
         const t4 = this.add.text(WIDTH - 60, y, this.formatTime(entry.clearTime), style);
         this.rankingContainer.add([t1, t2, t3, t4]);
@@ -593,8 +837,8 @@ class ResultScene extends Phaser.Scene {
       });
     }
 
-    // 閉じるボタン（コンテナに追加）
-    const closeBtn = this.createDialogButton(WIDTH / 2, HEIGHT - 60, '閉じる', 0x666666, () => {
+    // 閉じるボタン
+    const closeBtn = this.createDialogButton(WIDTH / 2, HEIGHT - 50, 'CLOSE', 0x444455, () => {
       this.closeRankingResult();
     });
     this.rankingContainer.add(closeBtn);
@@ -608,26 +852,34 @@ class ResultScene extends Phaser.Scene {
   }
 
   createCelebrationEffect() {
-    for (let i = 0; i < 30; i++) {
-      const x = Math.random() * GAME_CONFIG.WIDTH;
-      const y = -20;
+    const { WIDTH, HEIGHT } = GAME_CONFIG;
+
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random() * WIDTH;
       const particle = this.add.graphics();
 
-      const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
+      const colors = [0x00ff66, 0x00aaff, 0xffdd00, 0xff66ff, 0x00ffff, 0xff8800];
       const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 2 + Math.random() * 4;
 
-      particle.fillStyle(color, 1);
-      particle.fillRect(-4, -4, 8, 8);
+      particle.fillStyle(color, 0.8);
+      // ランダムに四角 or 円
+      if (Math.random() > 0.5) {
+        particle.fillRect(-size / 2, -size / 2, size, size);
+      } else {
+        particle.fillCircle(0, 0, size / 2);
+      }
       particle.x = x;
-      particle.y = y;
+      particle.y = -20 - Math.random() * 40;
 
       this.tweens.add({
         targets: particle,
-        y: GAME_CONFIG.HEIGHT + 20,
-        x: x + (Math.random() - 0.5) * 100,
-        rotation: Math.random() * Math.PI * 4,
-        duration: 2000 + Math.random() * 1000,
-        delay: Math.random() * 500,
+        y: HEIGHT + 20,
+        x: x + (Math.random() - 0.5) * 150,
+        rotation: Math.random() * Math.PI * 6,
+        alpha: { from: 0.9, to: 0 },
+        duration: 2500 + Math.random() * 1500,
+        delay: Math.random() * 800,
         ease: 'Sine.easeIn',
         onComplete: () => particle.destroy()
       });
