@@ -112,14 +112,28 @@ class GameScene extends Phaser.Scene {
     // 描画用Graphics
     this.drawGraphics = this.add.graphics();
 
-    // bug_smallアニメーション定義
-    if (this.textures.exists('enemy_bug_small') && !this.anims.exists('bug_small_idle')) {
-      this.anims.create({
-        key: 'bug_small_idle',
-        frames: this.anims.generateFrameNumbers('enemy_bug_small', { start: 0, end: 1 }),
-        frameRate: 4,
-        repeat: -1
-      });
+    // 敵アニメーション定義（スプライトシートが存在する場合のみ）
+    const enemyAnims = [
+      { key: 'bug_small_idle', texture: 'enemy_bug_small' },
+      { key: 'bug_medium_idle', texture: 'enemy_bug_medium' },
+      { key: 'worm_idle', texture: 'enemy_worm' },
+      { key: 'trojan_idle', texture: 'enemy_trojan' },
+      { key: 'ransom_idle', texture: 'enemy_ransom' },
+      { key: 'bomber_idle', texture: 'enemy_bomber' },
+      { key: 'shield_idle', texture: 'enemy_shield' },
+      { key: 'spawner_idle', texture: 'enemy_spawner' },
+      { key: 'stealth_idle', texture: 'enemy_stealth' },
+      { key: 'dasher_idle', texture: 'enemy_dasher' },
+    ];
+    for (const anim of enemyAnims) {
+      if (this.textures.exists(anim.texture) && !this.anims.exists(anim.key)) {
+        this.anims.create({
+          key: anim.key,
+          frames: this.anims.generateFrameNumbers(anim.texture, { start: 0, end: 1 }),
+          frameRate: 4,
+          repeat: -1
+        });
+      }
     }
 
     // 敵グループ
@@ -1132,8 +1146,9 @@ class Enemy {
     this.sprite.enemy = this;
 
     // スプライトシートが読み込まれている場合はアニメーション再生
-    if (enemyId === 'bug_small' && scene.anims.exists('bug_small_idle') && this.sprite.play) {
-      this.sprite.play('bug_small_idle');
+    const animKey = `${enemyId}_idle`;
+    if (scene.anims.exists(animKey) && this.sprite.play) {
+      this.sprite.play(animKey);
     }
 
     // CPUへ向かう

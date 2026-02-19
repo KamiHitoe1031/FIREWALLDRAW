@@ -45,6 +45,28 @@ class PreloadScene extends Phaser.Scene {
       frameHeight: 64
     });
 
+    // 新敵スプライト（Phase 2追加分）
+    this.load.spritesheet('enemy_bomber', 'assets/images/enemies/bomber.png', {
+      frameWidth: 40,
+      frameHeight: 40
+    });
+    this.load.spritesheet('enemy_shield', 'assets/images/enemies/shield.png', {
+      frameWidth: 20,
+      frameHeight: 20
+    });
+    this.load.spritesheet('enemy_spawner', 'assets/images/enemies/spawner.png', {
+      frameWidth: 48,
+      frameHeight: 48
+    });
+    this.load.spritesheet('enemy_stealth', 'assets/images/enemies/stealth.png', {
+      frameWidth: 20,
+      frameHeight: 20
+    });
+    this.load.spritesheet('enemy_dasher', 'assets/images/enemies/dasher.png', {
+      frameWidth: 32,
+      frameHeight: 32
+    });
+
     // CPU（HP状態別の個別画像）
     this.load.image('cpu_happy', 'assets/images/cpu/cpu_happy.webp');
     this.load.image('cpu_worried', 'assets/images/cpu/cpu_worried.webp');
