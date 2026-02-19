@@ -172,23 +172,23 @@ const DEFAULT_DATA = {
       reward: 100,
       targetWalls: 15,
       waves: [
-        { enemies: "bug_small:5", spawnInterval: 1500, directions: ["right"] },
-        { enemies: "bug_small:8", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "bug_small:6,bug_medium:2", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "bug_medium:4,bug_small:6", spawnInterval: 1000, directions: ["right", "top"] }
+        { enemies: "bug_small:5", spawnInterval: 1500, directions: ["right", "top"] },
+        { enemies: "bug_small:8", spawnInterval: 1200, directions: ["right", "left"] },
+        { enemies: "bug_small:6,bug_medium:2", spawnInterval: 1200, directions: ["right", "top", "bottom"] },
+        { enemies: "bug_medium:4,bug_small:6", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
       id: 2,
-      name: "東からの脅威",
+      name: "四方の脅威",
       cpuHp: 10,
       reward: 120,
       targetWalls: 18,
       waves: [
-        { enemies: "bug_small:10", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "bug_small:8,bug_medium:3", spawnInterval: 1000, directions: ["right"] },
-        { enemies: "bug_medium:5,worm:4", spawnInterval: 1000, directions: ["right"] },
-        { enemies: "worm:8,bug_small:5", spawnInterval: 800, directions: ["right"] }
+        { enemies: "bug_small:10", spawnInterval: 1200, directions: ["right", "left"] },
+        { enemies: "bug_small:8,bug_medium:3", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "bug_medium:5,worm:4", spawnInterval: 1000, directions: ["right", "left", "top"] },
+        { enemies: "worm:8,bug_small:5", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
@@ -198,10 +198,10 @@ const DEFAULT_DATA = {
       reward: 150,
       targetWalls: 20,
       waves: [
-        { enemies: "bug_small:6,bug_small:6", spawnInterval: 1200, directions: ["right", "left"] },
-        { enemies: "bug_medium:4,bug_medium:4", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "worm:5,worm:5", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "trojan:1,bug_small:10", spawnInterval: 800, directions: ["right", "left"] }
+        { enemies: "bug_small:6,bug_small:6", spawnInterval: 1200, directions: ["right", "left", "top"] },
+        { enemies: "bug_medium:4,bug_medium:4", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "worm:5,worm:5", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "trojan:1,bug_small:10", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
@@ -212,10 +212,10 @@ const DEFAULT_DATA = {
       targetWalls: 22,
       description: "新敵登場：ボマー（壁を破壊する）",
       waves: [
-        { enemies: "bug_small:10,bomber:1", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "bug_medium:6,bomber:2", spawnInterval: 1000, directions: ["right", "top"] },
-        { enemies: "bomber:3,bug_small:10", spawnInterval: 1000, directions: ["right", "bottom"] },
-        { enemies: "bomber:4,worm:8", spawnInterval: 800, directions: ["right", "top", "bottom"] }
+        { enemies: "bug_small:10,bomber:1", spawnInterval: 1200, directions: ["right", "top", "bottom"] },
+        { enemies: "bug_medium:6,bomber:2", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "bomber:3,bug_small:10", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "bomber:4,worm:8", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
     {
@@ -226,9 +226,9 @@ const DEFAULT_DATA = {
       targetWalls: 25,
       description: "新敵登場：シールド型（1回だけ壁をすり抜ける）",
       waves: [
-        { enemies: "bug_small:8,shield:2", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "shield:4,bug_medium:4", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "shield:5,worm:6", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "bug_small:8,shield:2", spawnInterval: 1200, directions: ["right", "left", "top"] },
+        { enemies: "shield:4,bug_medium:4", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "shield:5,worm:6", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
         { enemies: "shield:6,bomber:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
@@ -240,9 +240,9 @@ const DEFAULT_DATA = {
       targetWalls: 28,
       description: "新敵登場：スポナー（倒すと小型を召喚）",
       waves: [
-        { enemies: "bug_small:6,spawner:2", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "spawner:3,bug_medium:4", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "spawner:4,shield:2", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "bug_small:6,spawner:2", spawnInterval: 1200, directions: ["right", "top", "left"] },
+        { enemies: "spawner:3,bug_medium:4", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "spawner:4,shield:2", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
         { enemies: "spawner:5,bomber:2,worm:5", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
@@ -254,9 +254,9 @@ const DEFAULT_DATA = {
       targetWalls: 30,
       description: "新敵登場：ステルス型（時々透明になる）",
       waves: [
-        { enemies: "stealth:5,bug_small:8", spawnInterval: 1200, directions: ["right", "top"] },
-        { enemies: "stealth:6,shield:3", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "stealth:8,bomber:2", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "stealth:5,bug_small:8", spawnInterval: 1200, directions: ["right", "top", "bottom"] },
+        { enemies: "stealth:6,shield:3", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "stealth:8,bomber:2", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
         { enemies: "stealth:10,spawner:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
@@ -268,9 +268,9 @@ const DEFAULT_DATA = {
       targetWalls: 32,
       description: "新敵登場：ダッシュ型（突然加速する）",
       waves: [
-        { enemies: "dasher:4,bug_medium:6", spawnInterval: 1200, directions: ["right"] },
-        { enemies: "dasher:5,stealth:4", spawnInterval: 1000, directions: ["right", "left"] },
-        { enemies: "dasher:6,bomber:3,shield:3", spawnInterval: 1000, directions: ["right", "top", "bottom"] },
+        { enemies: "dasher:4,bug_medium:6", spawnInterval: 1200, directions: ["right", "left", "bottom"] },
+        { enemies: "dasher:5,stealth:4", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
+        { enemies: "dasher:6,bomber:3,shield:3", spawnInterval: 1000, directions: ["right", "top", "bottom", "left"] },
         { enemies: "dasher:8,spawner:2", spawnInterval: 800, directions: ["right", "top", "bottom", "left"] }
       ]
     },
