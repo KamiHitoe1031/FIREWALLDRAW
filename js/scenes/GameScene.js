@@ -320,14 +320,36 @@ class GameScene extends Phaser.Scene {
 
   drawPreviewLine() {
     this.drawGraphics.clear();
-    this.drawGraphics.lineStyle(this.wallThickness, 0x00aaff, 0.5);
+    const wallData = this.getWallData(this.selectedWallType);
+    let color = parseInt(wallData.color);
+    if (isNaN(color)) color = 0x00aaff;
+    const wallStyle = Wall.getWallStyle(wallData.id, color);
+
+    // グロー層
+    this.drawGraphics.lineStyle(28, wallStyle.glow, 0.2);
     this.drawGraphics.beginPath();
     this.drawGraphics.moveTo(this.currentLine[0].x, this.currentLine[0].y);
-
     for (let i = 1; i < this.currentLine.length; i++) {
       this.drawGraphics.lineTo(this.currentLine[i].x, this.currentLine[i].y);
     }
+    this.drawGraphics.strokePath();
 
+    // メイン層
+    this.drawGraphics.lineStyle(this.wallThickness, color, 0.5);
+    this.drawGraphics.beginPath();
+    this.drawGraphics.moveTo(this.currentLine[0].x, this.currentLine[0].y);
+    for (let i = 1; i < this.currentLine.length; i++) {
+      this.drawGraphics.lineTo(this.currentLine[i].x, this.currentLine[i].y);
+    }
+    this.drawGraphics.strokePath();
+
+    // コア層
+    this.drawGraphics.lineStyle(3, wallStyle.core, 0.35);
+    this.drawGraphics.beginPath();
+    this.drawGraphics.moveTo(this.currentLine[0].x, this.currentLine[0].y);
+    for (let i = 1; i < this.currentLine.length; i++) {
+      this.drawGraphics.lineTo(this.currentLine[i].x, this.currentLine[i].y);
+    }
     this.drawGraphics.strokePath();
   }
 
@@ -1002,6 +1024,20 @@ class GameScene extends Phaser.Scene {
 // === Wallクラス ===
 
 class Wall {
+  /**
+   * 壁タイプ別のビジュアルスタイル定義
+   */
+  static getWallStyle(wallId, baseColor) {
+    switch (wallId) {
+      case 'fire':
+        return { glow: 0x660000, core: 0xffff00, particle: 0xff8800 };
+      case 'ice':
+        return { glow: 0x003366, core: 0xeeffff, particle: 0xaaeeff };
+      default: // basic
+        return { glow: 0x004488, core: 0x88ddff, particle: 0x44ccff };
+    }
+  }
+
   constructor(scene, points, wallData, duration, damageMultiplier = 1) {
     this.scene = scene;
     this.points = points;
@@ -1009,6 +1045,21 @@ class Wall {
     this.createdAt = Date.now();
     this.duration = duration;
     this.damageMultiplier = damageMultiplier;
+
+    // ビジュアルスタイル
+    let color = parseInt(wallData.color);
+    if (isNaN(color)) color = 0x00aaff;
+    this.color = color;
+    this.style = Wall.getWallStyle(wallData.id, color);
+
+    // パスの総長を事前計算（パーティクル用）
+    this.totalLength = 0;
+    for (let i = 1; i < points.length; i++) {
+      this.totalLength += Math.sqrt(
+        (points[i].x - points[i - 1].x) ** 2 +
+        (points[i].y - points[i - 1].y) ** 2
+      );
+    }
 
     // Graphics描画
     this.graphics = scene.add.graphics();
@@ -1031,31 +1082,166 @@ class Wall {
     return segments;
   }
 
-  draw() {
-    const elapsed = Date.now() - this.createdAt;
-    const alpha = Math.max(0, 1 - elapsed / this.duration);
+  /**
+   * パス上の特定距離地点の座標を返す
+   */
+  getPointAtDistance(dist) {
+    let accumulated = 0;
+    for (let i = 1; i < this.points.length; i++) {
+      const dx = this.points[i].x - this.points[i - 1].x;
+      const dy = this.points[i].y - this.points[i - 1].y;
+      const segLen = Math.sqrt(dx * dx + dy * dy);
+      if (accumulated + segLen >= dist) {
+        const t = (dist - accumulated) / segLen;
+        return {
+          x: this.points[i - 1].x + dx * t,
+          y: this.points[i - 1].y + dy * t
+        };
+      }
+      accumulated += segLen;
+    }
+    const last = this.points[this.points.length - 1];
+    return { x: last.x, y: last.y };
+  }
 
-    this.graphics.clear();
-
-    // 壁の色を解析
-    let color = parseInt(this.wallData.color);
-    if (isNaN(color)) color = 0x00aaff;
-
-    this.graphics.lineStyle(16, color, alpha);
+  /**
+   * パスのストロークを描く（共通ヘルパー）
+   */
+  strokeWallPath(thickness, color, alpha) {
+    this.graphics.lineStyle(thickness, color, alpha);
     this.graphics.beginPath();
     this.graphics.moveTo(this.points[0].x, this.points[0].y);
-
     for (let i = 1; i < this.points.length; i++) {
       this.graphics.lineTo(this.points[i].x, this.points[i].y);
     }
     this.graphics.strokePath();
+  }
 
-    // キラキラエフェクト
-    if (alpha > 0.3) {
-      this.graphics.fillStyle(0xffffff, alpha * 0.5);
-      for (let i = 0; i < this.points.length; i += 5) {
-        this.graphics.fillCircle(this.points[i].x, this.points[i].y, 3);
-      }
+  draw() {
+    const elapsed = Date.now() - this.createdAt;
+    const alpha = Math.max(0, 1 - elapsed / this.duration);
+    const time = elapsed * 0.001; // 秒単位
+
+    this.graphics.clear();
+
+    // 消えかけの壁は軽量描画
+    if (alpha < 0.15) {
+      this.strokeWallPath(16, this.color, alpha);
+      return;
+    }
+
+    // === レイヤー1: 外側グロー ===
+    const glowAlpha = alpha * 0.25;
+    // fire壁は明滅
+    const glowFlicker = this.wallData.id === 'fire'
+      ? 1 + Math.sin(time * 8) * 0.3
+      : 1;
+    this.strokeWallPath(28, this.style.glow, glowAlpha * glowFlicker);
+
+    // === レイヤー2: メインボディ ===
+    this.strokeWallPath(16, this.color, alpha);
+
+    // === レイヤー3: 内側コア ===
+    const coreAlpha = alpha * 0.7;
+    this.strokeWallPath(4, this.style.core, coreAlpha);
+
+    // === タイプ別パーティクルエフェクト ===
+    if (alpha > 0.2) {
+      this.drawParticles(time, alpha);
+    }
+  }
+
+  /**
+   * 壁タイプ別パーティクル描画
+   */
+  drawParticles(time, alpha) {
+    const wallId = this.wallData.id;
+
+    if (wallId === 'fire') {
+      this.drawFireParticles(time, alpha);
+    } else if (wallId === 'ice') {
+      this.drawIceParticles(time, alpha);
+    } else {
+      this.drawEnergyPulse(time, alpha);
+    }
+  }
+
+  /**
+   * basic壁: パス上を流れるエネルギーパルス
+   */
+  drawEnergyPulse(time, alpha) {
+    const pulseCount = Math.min(8, Math.floor(this.totalLength / 30));
+    const speed = 60; // px/sec
+
+    for (let i = 0; i < pulseCount; i++) {
+      const offset = (i / pulseCount) * this.totalLength;
+      const dist = (offset + time * speed) % this.totalLength;
+      const pos = this.getPointAtDistance(dist);
+
+      // パルスの明滅
+      const pulse = 0.5 + Math.sin(time * 4 + i * 1.5) * 0.5;
+      const size = 2 + pulse * 2;
+      this.graphics.fillStyle(this.style.core, alpha * (0.4 + pulse * 0.6));
+      this.graphics.fillCircle(pos.x, pos.y, size);
+    }
+  }
+
+  /**
+   * fire壁: 上向きに揺れる炎パーティクル
+   */
+  drawFireParticles(time, alpha) {
+    const count = Math.min(10, Math.floor(this.totalLength / 25));
+
+    for (let i = 0; i < count; i++) {
+      const dist = (i / count) * this.totalLength;
+      const base = this.getPointAtDistance(dist);
+
+      // 各パーティクルは異なるタイミングで揺れる
+      const phase = i * 2.3 + time * 5;
+      const riseY = -4 - Math.abs(Math.sin(phase)) * 10;
+      const swayX = Math.sin(phase * 1.3) * 5;
+      const life = (Math.sin(phase) + 1) * 0.5; // 0-1 cycle
+      const size = 1.5 + life * 2.5;
+
+      // 炎の色グラデーション（黄→オレンジ→赤）
+      const colors = [0xffff00, 0xff8800, 0xff4400];
+      const colorIdx = Math.min(2, Math.floor(life * 3));
+
+      this.graphics.fillStyle(colors[colorIdx], alpha * (0.3 + life * 0.5));
+      this.graphics.fillCircle(base.x + swayX, base.y + riseY, size);
+    }
+  }
+
+  /**
+   * ice壁: 氷結晶パーティクル（ダイヤ形）
+   */
+  drawIceParticles(time, alpha) {
+    const count = Math.min(8, Math.floor(this.totalLength / 35));
+
+    for (let i = 0; i < count; i++) {
+      const dist = (i / count) * this.totalLength;
+      const base = this.getPointAtDistance(dist);
+
+      const phase = i * 1.7 + time * 2;
+      const sparkle = (Math.sin(phase) + 1) * 0.5;
+      const offsetY = Math.sin(phase * 0.7) * 4;
+      const offsetX = Math.cos(phase * 0.5) * 3;
+      const size = 2 + sparkle * 3;
+
+      // ダイヤ形の結晶
+      const cx = base.x + offsetX;
+      const cy = base.y + offsetY;
+      this.graphics.fillStyle(this.style.particle, alpha * (0.3 + sparkle * 0.6));
+      this.graphics.fillTriangle(
+        cx, cy - size,
+        cx - size * 0.6, cy,
+        cx + size * 0.6, cy
+      );
+      this.graphics.fillTriangle(
+        cx, cy + size,
+        cx - size * 0.6, cy,
+        cx + size * 0.6, cy
+      );
     }
   }
 
