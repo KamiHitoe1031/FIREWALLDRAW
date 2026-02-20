@@ -79,6 +79,7 @@ const config = {
     PreloadScene,
     TitleScene,
     StageSelectScene,
+    BriefingScene,
     HelpScene,
     DataScene,
     GameScene,

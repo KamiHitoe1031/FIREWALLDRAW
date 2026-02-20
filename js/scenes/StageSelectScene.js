@@ -267,22 +267,11 @@ class StageSelectScene extends Phaser.Scene {
   }
 
   startGame(stageId) {
-    console.log('[StageSelectScene] startGame called - stageId:', stageId, 'difficulty:', this.difficulty);
-    try {
-      console.log('[StageSelectScene] GameScene 開始中...');
-      this.scene.start('GameScene', {
-        stageId: stageId,
-        difficulty: this.difficulty
-      });
-      console.log('[StageSelectScene] UIScene 起動中...');
-      this.scene.launch('UIScene', {
-        stageId: stageId,
-        difficulty: this.difficulty
-      });
-      console.log('[StageSelectScene] シーン遷移完了');
-    } catch (error) {
-      console.error('[StageSelectScene] startGame でエラー:', error);
-    }
+    console.log('[StageSelectScene] ブリーフィング画面へ - stageId:', stageId);
+    this.scene.start('BriefingScene', {
+      stageId: stageId,
+      difficulty: this.difficulty
+    });
   }
 }
 
