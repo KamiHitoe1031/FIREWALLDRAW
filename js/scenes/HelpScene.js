@@ -1,6 +1,7 @@
 /**
  * HelpScene.js
- * ヘルプ画面（タブ切り替え式・スクロール対応）
+ * ルール説明・ヘルプ画面（実際のゲーム素材を使用したリッチ版）
+ * ページ切り替え式: 基本ルール → 壁の種類 → 敵図鑑
  */
 
 class HelpScene extends Phaser.Scene {
@@ -10,357 +11,469 @@ class HelpScene extends Phaser.Scene {
 
   create() {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
-    this.currentTab = 'controls';
-
-    // スクロール関連
-    this.scrollY = 0;
-    this.maxScrollY = 0;
-    this.contentAreaTop = 110;
-    this.contentAreaHeight = HEIGHT - 190;
+    this.pageIndex = 0;
+    this.totalPages = 3;
 
     // 背景
-    this.createBackground();
+    if (this.textures.exists('bg_game')) {
+      this.add.image(WIDTH / 2, HEIGHT / 2, 'bg_game').setDisplaySize(WIDTH, HEIGHT);
+    }
+    const overlay = this.add.graphics();
+    overlay.fillStyle(0x0a0a1e, 0.82);
+    overlay.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // タイトル
-    this.add.text(WIDTH / 2, 30, 'ヘルプ', {
-      fontSize: '28px',
-      color: '#ffffff',
-      fontFamily: 'sans-serif',
-      fontStyle: 'bold'
+    // ヘッダー
+    this.add.text(WIDTH / 2, 22, 'HOW TO PLAY', {
+      fontSize: '22px', color: '#00ccff', fontFamily: 'sans-serif', fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // タブボタン
-    this.tabs = {};
-    this.createTab(WIDTH / 2 - 150, 70, 'controls', '操作方法');
-    this.createTab(WIDTH / 2, 70, 'difficulty', '難易度');
-    this.createTab(WIDTH / 2 + 150, 70, 'enemies', '図鑑');
+    // ページインジケーター
+    this.pageLabels = ['基本ルール', '壁の種類', '敵図鑑'];
+    this.indicatorTexts = [];
+    for (let i = 0; i < this.totalPages; i++) {
+      const t = this.add.text(WIDTH / 2 + (i - 1) * 120, 48, this.pageLabels[i], {
+        fontSize: '12px', color: '#556677', fontFamily: 'sans-serif'
+      }).setOrigin(0.5);
+      this.indicatorTexts.push(t);
+    }
+    this.indicatorBar = this.add.graphics();
 
-    // コンテンツエリア（マスク付き）
-    this.contentContainer = this.add.container(0, this.contentAreaTop);
-    this.setupContentMask();
+    // コンテンツコンテナ
+    this.contentContainer = this.add.container(0, 0);
 
-    // スクロールバー
-    this.createScrollbar();
+    // ナビゲーションボタン
+    this.prevBtn = this.createNavButton(50, HEIGHT / 2, '<', () => this.changePage(-1));
+    this.nextBtn = this.createNavButton(WIDTH - 50, HEIGHT / 2, '>', () => this.changePage(1));
 
-    // マウスホイールイベント
-    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
-      this.handleScroll(deltaY);
+    // 戻るボタン
+    this.createBackButton(WIDTH / 2, HEIGHT - 30);
+
+    // 初期ページ表示
+    this.showPage(0);
+  }
+
+  changePage(delta) {
+    const newIndex = this.pageIndex + delta;
+    if (newIndex < 0 || newIndex >= this.totalPages) return;
+    this.showPage(newIndex);
+  }
+
+  showPage(index) {
+    this.pageIndex = index;
+
+    // インジケーター更新
+    this.indicatorTexts.forEach((t, i) => {
+      t.setColor(i === index ? '#00ccff' : '#445566');
+      t.setFontStyle(i === index ? 'bold' : 'normal');
     });
+    this.indicatorBar.clear();
+    this.indicatorBar.fillStyle(0x00ccff, 1);
+    const barX = GAME_CONFIG.WIDTH / 2 + (index - 1) * 120;
+    this.indicatorBar.fillRoundedRect(barX - 30, 58, 60, 2, 1);
 
-    // 戻るボタン（固定位置）
-    this.createBackButton(WIDTH / 2, HEIGHT - 40);
+    // ナビボタン表示制御
+    this.prevBtn.setVisible(index > 0);
+    this.nextBtn.setVisible(index < this.totalPages - 1);
 
-    // 初期タブ表示
-    this.showTab('controls');
+    // コンテンツ切替
+    this.contentContainer.removeAll(true);
+
+    switch (index) {
+      case 0: this.showBasicRules(); break;
+      case 1: this.showWallTypes(); break;
+      case 2: this.showEnemyGuide(); break;
+    }
   }
 
-  setupContentMask() {
+  // ==============================
+  // Page 1: 基本ルール
+  // ==============================
+  showBasicRules() {
     const { WIDTH } = GAME_CONFIG;
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(20, this.contentAreaTop, WIDTH - 40, this.contentAreaHeight);
-    const mask = maskShape.createGeometryMask();
-    this.contentContainer.setMask(mask);
-  }
+    const c = this.contentContainer;
+    let y = 75;
 
-  createScrollbar() {
-    const { WIDTH } = GAME_CONFIG;
-    this.scrollbarBg = this.add.graphics();
-    this.scrollbarBg.fillStyle(0x333333, 0.5);
-    this.scrollbarBg.fillRect(WIDTH - 30, this.contentAreaTop, 8, this.contentAreaHeight);
-
-    this.scrollbarThumb = this.add.graphics();
-    this.scrollbarThumb.setVisible(false);
-  }
-
-  updateScrollbar() {
-    const { WIDTH } = GAME_CONFIG;
-    this.scrollbarThumb.clear();
-
-    if (this.maxScrollY <= 0) {
-      this.scrollbarThumb.setVisible(false);
-      this.scrollbarBg.setVisible(false);
-      return;
+    // --- セクション1: CPUを守れ ---
+    const cpuKey = this.textures.exists('cpu_happy') ? 'cpu_happy' : null;
+    if (cpuKey) {
+      const cpu = this.add.image(80, y + 45, cpuKey).setScale(0.5);
+      c.add(cpu);
+      this.tweens.add({ targets: cpu, y: y + 41, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 
-    this.scrollbarBg.setVisible(true);
-    this.scrollbarThumb.setVisible(true);
-    const thumbHeight = Math.max(20, (this.contentAreaHeight / (this.contentAreaHeight + this.maxScrollY)) * this.contentAreaHeight);
-    const thumbY = this.contentAreaTop + (this.scrollY / this.maxScrollY) * (this.contentAreaHeight - thumbHeight);
+    const sec1Title = this.add.text(cpuKey ? 145 : 40, y, 'CPUちゃんを守れ！', {
+      fontSize: '17px', color: '#00ff66', fontFamily: 'sans-serif', fontStyle: 'bold'
+    });
+    c.add(sec1Title);
+    y += 24;
 
-    this.scrollbarThumb.fillStyle(0x00aaff, 0.8);
-    this.scrollbarThumb.fillRoundedRect(WIDTH - 30, thumbY, 8, thumbHeight, 4);
+    const sec1Desc = this.add.text(cpuKey ? 145 : 40, y, [
+      '中央にいるCPUちゃんがウイルスに',
+      '攻撃されるとHPが減ります。',
+      'HPが0になるとゲームオーバー！'
+    ].join('\n'), {
+      fontSize: '12px', color: '#aabbcc', fontFamily: 'sans-serif', lineSpacing: 5
+    });
+    c.add(sec1Desc);
+    y += 65;
+
+    // --- 区切り線 ---
+    c.add(this.createDivider(y));
+    y += 12;
+
+    // --- セクション2: 壁を描いて防衛 ---
+    const wallIcon = this.textures.exists('icon_wall_basic') ? 'icon_wall_basic' : null;
+    if (wallIcon) {
+      const icon = this.add.image(80, y + 40, wallIcon).setScale(0.7);
+      c.add(icon);
+    }
+
+    const sec2Title = this.add.text(wallIcon ? 125 : 40, y, 'マウスで壁を描いて防衛', {
+      fontSize: '17px', color: '#00aaff', fontFamily: 'sans-serif', fontStyle: 'bold'
+    });
+    c.add(sec2Title);
+    y += 24;
+
+    const sec2Desc = this.add.text(wallIcon ? 125 : 40, y, [
+      'ドラッグで光の壁を描きます。',
+      '壁に触れたウイルスはダメージを受けます。',
+    ].join('\n'), {
+      fontSize: '12px', color: '#aabbcc', fontFamily: 'sans-serif', lineSpacing: 5
+    });
+    c.add(sec2Desc);
+    y += 45;
+
+    // --- 区切り線 ---
+    c.add(this.createDivider(y));
+    y += 12;
+
+    // --- セクション3: ルール詳細 ---
+    const rules = [
+      { icon: '||', text: '壁は同時に3本まで（アップグレードで増加）' },
+      { icon: '>>',  text: '壁は5秒で消える（アップグレードで延長）' },
+      { icon: '~~',  text: '短い線は壁にならない（50px以上必要）' },
+      { icon: '<>',  text: '敵は上下左右から同時に攻めてくる！' },
+    ];
+
+    const sec3Title = this.add.text(40, y, 'ルール', {
+      fontSize: '15px', color: '#ffdd00', fontFamily: 'sans-serif', fontStyle: 'bold'
+    });
+    c.add(sec3Title);
+    y += 22;
+
+    rules.forEach(rule => {
+      const bullet = this.add.graphics();
+      bullet.fillStyle(0x00aaff, 0.6);
+      bullet.fillCircle(52, y + 7, 4);
+      c.add(bullet);
+
+      const text = this.add.text(66, y, rule.text, {
+        fontSize: '11px', color: '#ccddee', fontFamily: 'sans-serif'
+      });
+      c.add(text);
+      y += 20;
+    });
+
+    y += 10;
+    // --- 区切り線 ---
+    c.add(this.createDivider(y));
+    y += 12;
+
+    // --- セクション4: コツ ---
+    const sec4Title = this.add.text(40, y, 'コツ', {
+      fontSize: '15px', color: '#ff8800', fontFamily: 'sans-serif', fontStyle: 'bold'
+    });
+    c.add(sec4Title);
+    y += 22;
+
+    const tips = [
+      '敵の進路を先読みして壁を描こう',
+      '複数の壁でジグザグに迎撃すると効率的',
+      'ボマーは壁を壊すので要注意！',
+    ];
+
+    tips.forEach(tip => {
+      const star = this.add.text(44, y, '*', { fontSize: '12px', color: '#ff8800', fontFamily: 'sans-serif' });
+      c.add(star);
+      const text = this.add.text(66, y, tip, { fontSize: '11px', color: '#ccddee', fontFamily: 'sans-serif' });
+      c.add(text);
+      y += 20;
+    });
   }
 
-  handleScroll(deltaY) {
-    if (this.maxScrollY <= 0) return;
+  // ==============================
+  // Page 2: 壁の種類
+  // ==============================
+  showWallTypes() {
+    const { WIDTH } = GAME_CONFIG;
+    const c = this.contentContainer;
+    let y = 75;
 
-    this.scrollY += deltaY * 0.5;
-    this.scrollY = Phaser.Math.Clamp(this.scrollY, 0, this.maxScrollY);
-    this.contentContainer.y = this.contentAreaTop - this.scrollY;
-    this.updateScrollbar();
+    const wallTypes = [
+      {
+        id: 'basic', name: '基本の壁', icon: 'icon_wall_basic',
+        color: '#00aaff', desc: 'スタンダードな壁。バランスの良いダメージ。',
+        stats: 'ダメージ: 10 / 特殊効果: なし',
+        unlock: '最初から使用可能'
+      },
+      {
+        id: 'fire', name: '炎の壁', icon: 'icon_wall_fire',
+        color: '#ff6600', desc: '触れた敵に継続ダメージ（DoT）を与える。',
+        stats: 'ダメージ: 15 / 特殊: 3秒間DoT',
+        unlock: 'ステージ3クリアで購入可能（300コイン）'
+      },
+      {
+        id: 'ice', name: '氷の壁', icon: 'icon_wall_ice',
+        color: '#00ffff', desc: '触れた敵の移動速度を大幅に低下させる。',
+        stats: 'ダメージ: 5 / 特殊: 80%スロー（2秒）',
+        unlock: 'ステージ5クリアで購入可能（500コイン）'
+      }
+    ];
+
+    wallTypes.forEach((wall, index) => {
+      // パネル背景
+      const panel = this.add.graphics();
+      panel.fillStyle(0x111133, 0.6);
+      panel.fillRoundedRect(40, y, WIDTH - 80, 120, 8);
+      const accent = parseInt(wall.color.replace('#', '0x'));
+      panel.lineStyle(1, accent, 0.5);
+      panel.strokeRoundedRect(40, y, WIDTH - 80, 120, 8);
+      // アクセントライン
+      panel.fillStyle(accent, 1);
+      panel.fillRect(40, y, 4, 120);
+      c.add(panel);
+
+      // アイコン
+      if (this.textures.exists(wall.icon)) {
+        const icon = this.add.image(90, y + 40, wall.icon).setScale(0.9);
+        c.add(icon);
+      }
+
+      // 名前
+      const nameText = this.add.text(130, y + 10, wall.name, {
+        fontSize: '16px', color: wall.color, fontFamily: 'sans-serif', fontStyle: 'bold'
+      });
+      c.add(nameText);
+
+      // 説明
+      const descText = this.add.text(130, y + 32, wall.desc, {
+        fontSize: '11px', color: '#aabbcc', fontFamily: 'sans-serif',
+        wordWrap: { width: WIDTH - 200 }
+      });
+      c.add(descText);
+
+      // ステータス
+      const statsText = this.add.text(130, y + 55, wall.stats, {
+        fontSize: '11px', color: '#88aacc', fontFamily: 'sans-serif'
+      });
+      c.add(statsText);
+
+      // アンロック条件
+      const unlockText = this.add.text(130, y + 78, wall.unlock, {
+        fontSize: '10px', color: '#666688', fontFamily: 'sans-serif'
+      });
+      c.add(unlockText);
+
+      // 壁のビジュアルプレビュー（ミニ版）
+      const preview = this.add.graphics();
+      const px = WIDTH - 110;
+      const py = y + 40;
+      // グロー
+      preview.lineStyle(12, accent, 0.15);
+      preview.lineBetween(px - 25, py - 15, px + 25, py + 15);
+      // メイン
+      preview.lineStyle(6, accent, 0.7);
+      preview.lineBetween(px - 25, py - 15, px + 25, py + 15);
+      // コア
+      preview.lineStyle(2, 0xffffff, 0.5);
+      preview.lineBetween(px - 25, py - 15, px + 25, py + 15);
+      c.add(preview);
+
+      y += 140;
+    });
   }
 
-  createBackground() {
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x1a1a2e, 1);
-    graphics.fillRect(0, 0, GAME_CONFIG.WIDTH, GAME_CONFIG.HEIGHT);
+  // ==============================
+  // Page 3: 敵図鑑
+  // ==============================
+  showEnemyGuide() {
+    const { WIDTH, HEIGHT } = GAME_CONFIG;
+    const c = this.contentContainer;
 
-    // コンテンツエリアの背景
-    graphics.fillStyle(0x222244, 0.8);
-    graphics.fillRoundedRect(20, 100, GAME_CONFIG.WIDTH - 40, GAME_CONFIG.HEIGHT - 180, 10);
+    // スクロール用
+    this.enemyScrollY = 0;
+    this.enemyContentContainer = this.add.container(0, 0);
+    c.add(this.enemyContentContainer);
+
+    // マスク設定
+    const maskShape = this.make.graphics();
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(30, 68, WIDTH - 60, HEIGHT - 145);
+    this.enemyContentContainer.setMask(maskShape.createGeometryMask());
+
+    let y = 72;
+
+    const enemies = [
+      { name: 'バグ（小）', sprite: 'enemy_bug_small', hp: 10, speed: '速い', reward: 5,
+        desc: '最も基本的なウイルス。数で押してくる。', stage: 1, color: '#44ff44' },
+      { name: 'バグ（中）', sprite: 'enemy_bug_medium', hp: 25, speed: '普通', reward: 15,
+        desc: '小型より頑丈。油断は禁物。', stage: 1, color: '#ffff00' },
+      { name: 'ワーム', sprite: 'enemy_worm', hp: 15, speed: 'とても速い', reward: 10,
+        desc: '高速で突っ込んでくる。素早い対応が必要。', stage: 2, color: '#ff4444' },
+      { name: 'トロイ', sprite: 'enemy_trojan', hp: 50, speed: '遅い', reward: 30,
+        desc: '非常に頑丈。複数の壁で対処しよう。', stage: 3, color: '#aa44ff' },
+      { name: 'ボマー', sprite: 'enemy_bomber', hp: 20, speed: '速い', reward: 25,
+        desc: '壁に当たると自爆し、壁を破壊する！', stage: 4, special: '爆発', color: '#ff8800' },
+      { name: 'シールド型', sprite: 'enemy_shield', hp: 15, speed: 'とても速い', reward: 35,
+        desc: '壁を1回だけすり抜けられる。', stage: 5, special: 'すり抜け', color: '#00ccff' },
+      { name: 'スポナー', sprite: 'enemy_spawner', hp: 40, speed: '遅い', reward: 40,
+        desc: '倒すと小型バグを3体召喚する。', stage: 6, special: '増殖', color: '#cc44ff' },
+      { name: 'ステルス型', sprite: 'enemy_stealth', hp: 12, speed: 'とても速い', reward: 30,
+        desc: '2秒ごとに透明/不透明を切り替える。', stage: 7, special: '透明化', color: '#888888' },
+      { name: 'ダッシュ型', sprite: 'enemy_dasher', hp: 25, speed: '速い', reward: 30,
+        desc: '3秒ごとに1秒間高速移動する。', stage: 8, special: '突進', color: '#ffee00' },
+      { name: 'ランサム', sprite: 'enemy_ransom', hp: 80, speed: '普通', reward: 50,
+        desc: '最強のボスウイルス。全力で迎え撃て！', stage: 10, special: 'BOSS', color: '#ff3333' }
+    ];
+
+    enemies.forEach((enemy, index) => {
+      const ec = this.enemyContentContainer;
+
+      // 行背景（交互色）
+      const rowBg = this.add.graphics();
+      rowBg.fillStyle(index % 2 === 0 ? 0x111133 : 0x0a0a22, 0.5);
+      rowBg.fillRect(35, y - 2, WIDTH - 70, 44);
+      ec.add(rowBg);
+
+      // 敵スプライト
+      if (this.textures.exists(enemy.sprite)) {
+        const sprite = this.add.image(65, y + 20, enemy.sprite);
+        // フレーム0のみ表示のためcropは不要（Phaser画像は自動でフレーム0）
+        sprite.setDisplaySize(32, 32);
+        ec.add(sprite);
+      } else {
+        const placeholder = this.add.graphics();
+        placeholder.fillStyle(parseInt(enemy.color.replace('#', '0x')), 0.8);
+        placeholder.fillCircle(65, y + 20, 14);
+        ec.add(placeholder);
+      }
+
+      // 名前
+      const nameText = this.add.text(95, y + 2, enemy.name, {
+        fontSize: '13px', color: enemy.color, fontFamily: 'sans-serif', fontStyle: 'bold'
+      });
+      ec.add(nameText);
+
+      // 特殊能力バッジ
+      if (enemy.special) {
+        const badgeBg = this.add.graphics();
+        const bx = 95 + nameText.width + 8;
+        badgeBg.fillStyle(0x442200, 0.7);
+        badgeBg.fillRoundedRect(bx, y + 3, enemy.special.length * 9 + 10, 16, 8);
+        ec.add(badgeBg);
+
+        const badgeText = this.add.text(bx + 5, y + 5, enemy.special, {
+          fontSize: '9px', color: '#ff8800', fontFamily: 'sans-serif'
+        });
+        ec.add(badgeText);
+      }
+
+      // ステータス行
+      const statsStr = `HP:${enemy.hp}  速度:${enemy.speed}  報酬:${enemy.reward}`;
+      const stats = this.add.text(95, y + 20, statsStr, {
+        fontSize: '10px', color: '#778899', fontFamily: 'sans-serif'
+      });
+      ec.add(stats);
+
+      // 説明
+      const desc = this.add.text(95, y + 33, enemy.desc, {
+        fontSize: '9px', color: '#556677', fontFamily: 'sans-serif'
+      });
+      ec.add(desc);
+
+      // 登場ステージ
+      const stageTag = this.add.text(WIDTH - 85, y + 8, `Stage ${enemy.stage}`, {
+        fontSize: '10px', color: '#445566', fontFamily: 'sans-serif'
+      });
+      ec.add(stageTag);
+
+      y += 46;
+    });
+
+    this.enemyContentHeight = y - 72;
+
+    // スクロールイベント
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      if (this.pageIndex !== 2) return;
+      const maxScroll = Math.max(0, this.enemyContentHeight - (HEIGHT - 145));
+      this.enemyScrollY = Phaser.Math.Clamp(this.enemyScrollY + deltaY * 0.5, 0, maxScroll);
+      this.enemyContentContainer.y = -this.enemyScrollY;
+    });
   }
 
-  createTab(x, y, id, label) {
-    const width = 100;
-    const height = 30;
+  // ==============================
+  // UI共通ヘルパー
+  // ==============================
 
+  createDivider(y) {
+    const { WIDTH } = GAME_CONFIG;
+    const line = this.add.graphics();
+    line.lineStyle(1, 0x334466, 0.4);
+    line.lineBetween(50, y, WIDTH - 50, y);
+    return line;
+  }
+
+  createNavButton(x, y, label, onClick) {
+    const size = 36;
     const container = this.add.container(x, y);
 
     const bg = this.add.graphics();
-    container.add(bg);
+    bg.fillStyle(0x222244, 0.7);
+    bg.lineStyle(1, 0x00aaff, 0.5);
+    bg.fillCircle(0, 0, size / 2);
+    bg.strokeCircle(0, 0, size / 2);
 
     const text = this.add.text(0, 0, label, {
-      fontSize: '14px',
-      color: '#ffffff',
-      fontFamily: 'sans-serif'
+      fontSize: '18px', color: '#00ccff', fontFamily: 'sans-serif', fontStyle: 'bold'
     }).setOrigin(0.5);
-    container.add(text);
 
-    container.setSize(width, height);
+    container.add([bg, text]);
+    container.setSize(size, size);
     container.setInteractive({ useHandCursor: true });
 
-    container.on('pointerdown', () => {
-      this.showTab(id);
+    container.on('pointerover', () => {
+      bg.clear();
+      bg.fillStyle(0x334466, 0.9);
+      bg.lineStyle(2, 0x00ccff, 1);
+      bg.fillCircle(0, 0, size / 2);
+      bg.strokeCircle(0, 0, size / 2);
     });
 
-    this.tabs[id] = { container, bg, width, height };
-    this.updateTabStyle(id, false);
-  }
-
-  updateTabStyle(id, isActive) {
-    const tab = this.tabs[id];
-    const { bg, width, height } = tab;
-
-    bg.clear();
-    if (isActive) {
-      bg.fillStyle(0x4444aa, 1);
-      bg.lineStyle(2, 0x00aaff, 1);
-    } else {
-      bg.fillStyle(0x333355, 1);
-      bg.lineStyle(2, 0x666688, 1);
-    }
-    bg.fillRoundedRect(-width/2, -height/2, width, height, 5);
-    bg.strokeRoundedRect(-width/2, -height/2, width, height, 5);
-  }
-
-  showTab(tabId) {
-    this.currentTab = tabId;
-
-    // スクロール位置リセット
-    this.scrollY = 0;
-    this.maxScrollY = 0;
-    this.contentContainer.y = this.contentAreaTop;
-
-    // タブスタイル更新
-    Object.keys(this.tabs).forEach(id => {
-      this.updateTabStyle(id, id === tabId);
+    container.on('pointerout', () => {
+      bg.clear();
+      bg.fillStyle(0x222244, 0.7);
+      bg.lineStyle(1, 0x00aaff, 0.5);
+      bg.fillCircle(0, 0, size / 2);
+      bg.strokeCircle(0, 0, size / 2);
     });
 
-    // コンテンツクリア
-    this.contentContainer.removeAll(true);
-
-    // コンテンツ表示
-    let contentHeight = 0;
-    switch (tabId) {
-      case 'controls':
-        contentHeight = this.showControlsContent();
-        break;
-      case 'difficulty':
-        contentHeight = this.showDifficultyContent();
-        break;
-      case 'enemies':
-        contentHeight = this.showEnemiesContent();
-        break;
-    }
-
-    // スクロール範囲を計算
-    this.maxScrollY = Math.max(0, contentHeight - this.contentAreaHeight + 20);
-    this.updateScrollbar();
-  }
-
-  showControlsContent() {
-    const startY = 20;
-    const lineHeight = 24;
-    let y = startY;
-
-    const addLine = (text, color = '#ffffff', size = '14px') => {
-      const t = this.add.text(40, y, text, {
-        fontSize: size,
-        color: color,
-        fontFamily: 'sans-serif',
-        wordWrap: { width: GAME_CONFIG.WIDTH - 100 }
-      });
-      this.contentContainer.add(t);
-      y += lineHeight;
-    };
-
-    const addSection = (title) => {
-      y += 5;
-      addLine(title, '#00aaff', '16px');
-      y += 5;
-    };
-
-    addSection('基本操作');
-    addLine('・マウスをドラッグして光の壁を描く');
-    addLine('・壁に触れたウイルスはダメージを受ける');
-    addLine('・中央のCPUを守り抜こう！');
-
-    addSection('ルール');
-    addLine('・壁は同時に3本まで（アップグレードで増加）');
-    addLine('・壁は5秒で消える（アップグレードで延長）');
-    addLine('・短すぎる線は壁にならない（50px以上必要）');
-    addLine('・長すぎる線は自動で切られる（最大300px）');
-
-    addSection('コツ');
-    addLine('・敵の進路を予測して壁を描こう');
-    addLine('・複数の壁で敵を足止め！');
-    addLine('・四方から来る敵に注意しよう');
-
-    return y;
-  }
-
-  showDifficultyContent() {
-    const startY = 20;
-    let y = startY;
-
-    // タイトル
-    const title = this.add.text(40, y, 'ノーマルとハードの違い', {
-      fontSize: '16px',
-      color: '#00aaff',
-      fontFamily: 'sans-serif'
-    });
-    this.contentContainer.add(title);
-    y += 40;
-
-    // 比較表
-    const tableData = [
-      ['項目', 'ノーマル', 'ハード'],
-      ['壁の長さ', '300px', '200px'],
-      ['敵の数', 'x1.0', 'x1.5'],
-      ['敵のHP', 'x1.0', 'x1.2'],
-      ['CPU HP', '10', '8']
-    ];
-
-    const colWidths = [120, 100, 100];
-    const rowHeight = 30;
-    const tableX = 100;
-
-    tableData.forEach((row, rowIndex) => {
-      let x = tableX;
-      row.forEach((cell, colIndex) => {
-        const isHeader = rowIndex === 0;
-        const text = this.add.text(x, y, cell, {
-          fontSize: isHeader ? '14px' : '13px',
-          color: isHeader ? '#ffff00' : '#ffffff',
-          fontFamily: 'sans-serif',
-          fontStyle: isHeader ? 'bold' : 'normal'
-        });
-        this.contentContainer.add(text);
-        x += colWidths[colIndex];
-      });
-      y += rowHeight;
-    });
-
-    y += 30;
-
-    // 補足
-    const bonus = this.add.text(40, y, 'ハードモードはやりごたえ抜群！\n腕に自信がある人は挑戦してみよう！', {
-      fontSize: '14px',
-      color: '#aaaaaa',
-      fontFamily: 'sans-serif',
-      lineSpacing: 8
-    });
-    this.contentContainer.add(bonus);
-    y += 50;
-
-    return y;
-  }
-
-  showEnemiesContent() {
-    const enemies = [
-      { name: 'バグ（小）', color: '🟢', hp: 10, speed: '速い', reward: 5, desc: '最も基本的なウイルス。数で押してくる。', stage: 1 },
-      { name: 'バグ（中）', color: '🟡', hp: 25, speed: '普通', reward: 15, desc: '小型より頑丈。油断は禁物。', stage: 1 },
-      { name: 'ワーム', color: '🔴', hp: 15, speed: 'とても速い', reward: 10, desc: '高速で突っ込んでくる。素早い対応が必要。', stage: 2 },
-      { name: 'トロイ', color: '🟣', hp: 50, speed: '遅い', reward: 30, desc: '非常に頑丈。複数の壁で対処しよう。', stage: 3 },
-      { name: 'ボマー', color: '🟠', hp: 20, speed: '速い', reward: 25, desc: '【爆発】壁に当たると自爆し、壁を破壊する！', stage: 4 },
-      { name: 'シールド型', color: '🔵', hp: 15, speed: 'とても速い', reward: 35, desc: '【シールド】壁を1回だけすり抜けられる。', stage: 5 },
-      { name: 'スポナー', color: '💜', hp: 40, speed: '遅い', reward: 40, desc: '【増殖】倒すと小型バグを3体召喚する！', stage: 6 },
-      { name: 'ステルス型', color: '⚫', hp: 12, speed: 'とても速い', reward: 30, desc: '【透明】2秒ごとに透明/不透明を切り替える。', stage: 7 },
-      { name: 'ダッシュ型', color: '💛', hp: 25, speed: '速い', reward: 30, desc: '【突進】3秒ごとに1秒間高速移動する。', stage: 8 },
-      { name: 'ランサム', color: '⬛', hp: 80, speed: '普通', reward: 50, desc: '最強のウイルス。全力で迎え撃て！', stage: 10 }
-    ];
-
-    let y = 10;
-
-    enemies.forEach(enemy => {
-      // アイコンと名前
-      const header = this.add.text(40, y, `${enemy.color} ${enemy.name}`, {
-        fontSize: '14px',
-        color: '#ffffff',
-        fontFamily: 'sans-serif',
-        fontStyle: 'bold'
-      });
-      this.contentContainer.add(header);
-
-      // 登場ステージ
-      const stageText = this.add.text(GAME_CONFIG.WIDTH - 100, y, `Stage ${enemy.stage}〜`, {
-        fontSize: '11px',
-        color: '#666666',
-        fontFamily: 'sans-serif'
-      });
-      this.contentContainer.add(stageText);
-      y += 18;
-
-      // ステータス
-      const stats = this.add.text(60, y, `HP: ${enemy.hp} / 速度: ${enemy.speed} / 報酬: ${enemy.reward}`, {
-        fontSize: '11px',
-        color: '#aaaaaa',
-        fontFamily: 'sans-serif'
-      });
-      this.contentContainer.add(stats);
-      y += 16;
-
-      // 説明
-      const desc = this.add.text(60, y, enemy.desc, {
-        fontSize: '11px',
-        color: '#888888',
-        fontFamily: 'sans-serif'
-      });
-      this.contentContainer.add(desc);
-      y += 26;
-    });
-
-    return y;
+    container.on('pointerdown', onClick);
+    return container;
   }
 
   createBackButton(x, y) {
-    const width = 150;
-    const height = 40;
-    const color = 0x666666;
-
+    const width = 120;
+    const height = 32;
     const container = this.add.container(x, y);
 
     const bg = this.add.graphics();
-    bg.fillStyle(color, 1);
-    bg.lineStyle(2, 0xffffff, 1);
-    bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
-    bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+    bg.fillStyle(0x333344, 0.9);
+    bg.lineStyle(1, 0x556677, 0.8);
+    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
 
-    const text = this.add.text(0, 0, '戻る', {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontFamily: 'sans-serif'
+    const text = this.add.text(0, 0, 'BACK', {
+      fontSize: '13px', color: '#aabbcc', fontFamily: 'sans-serif', fontStyle: 'bold'
     }).setOrigin(0.5);
 
     container.add([bg, text]);
@@ -369,18 +482,20 @@ class HelpScene extends Phaser.Scene {
 
     container.on('pointerover', () => {
       bg.clear();
-      bg.fillStyle(0x888888, 1);
-      bg.lineStyle(2, 0xffff00, 1);
-      bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
-      bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+      bg.fillStyle(0x444466, 0.95);
+      bg.lineStyle(2, 0x00ccff, 1);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
+      text.setColor('#ffffff');
     });
 
     container.on('pointerout', () => {
       bg.clear();
-      bg.fillStyle(color, 1);
-      bg.lineStyle(2, 0xffffff, 1);
-      bg.fillRoundedRect(-width/2, -height/2, width, height, 8);
-      bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
+      bg.fillStyle(0x333344, 0.9);
+      bg.lineStyle(1, 0x556677, 0.8);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
+      text.setColor('#aabbcc');
     });
 
     container.on('pointerdown', () => {
