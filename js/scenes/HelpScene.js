@@ -13,6 +13,7 @@ class HelpScene extends Phaser.Scene {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
     this.pageIndex = 0;
     this.totalPages = 3;
+    this.soundManager = new SoundManager(this);
 
     // 背景
     if (this.textures.exists('bg_game')) {
@@ -457,7 +458,10 @@ class HelpScene extends Phaser.Scene {
       bg.strokeCircle(0, 0, size / 2);
     });
 
-    container.on('pointerdown', onClick);
+    container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
+      onClick();
+    });
     return container;
   }
 
@@ -499,6 +503,7 @@ class HelpScene extends Phaser.Scene {
     });
 
     container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
       this.scene.start('TitleScene');
     });
   }

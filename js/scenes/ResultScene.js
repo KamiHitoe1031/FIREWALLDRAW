@@ -28,6 +28,7 @@ class ResultScene extends Phaser.Scene {
 
   create() {
     this.assetManager = new AssetManager(this);
+    this.soundManager = new SoundManager(this);
     const { WIDTH, HEIGHT } = GAME_CONFIG;
 
     // 背景
@@ -314,6 +315,7 @@ class ResultScene extends Phaser.Scene {
 
     // NEW RECORD表示
     if (this.isNewRecord) {
+      this.soundManager.play('sfx_new_record');
       const newRecordBg = this.add.graphics();
       newRecordBg.fillStyle(0xff00ff, 0.2);
       newRecordBg.fillRoundedRect(WIDTH / 2 + 80, scoreY + 15, 60, 24, 12);
@@ -336,6 +338,7 @@ class ResultScene extends Phaser.Scene {
     }
 
     // 報酬表示
+    this.soundManager.play('sfx_coin_reward');
     const rewardY = scoreY + 60;
     const rewardContainer = this.add.container(WIDTH / 2, rewardY);
     const rewardBg = this.add.graphics();
@@ -574,7 +577,10 @@ class ResultScene extends Phaser.Scene {
       text.setColor('#ffffff');
     });
 
-    container.on('pointerdown', onClick);
+    container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
+      onClick();
+    });
 
     return container;
   }
@@ -701,7 +707,10 @@ class ResultScene extends Phaser.Scene {
       bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 6);
     });
 
-    container.on('pointerdown', onClick);
+    container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
+      onClick();
+    });
 
     return container;
   }

@@ -79,6 +79,7 @@ class GameScene extends Phaser.Scene {
 
     try {
       this.assetManager = new AssetManager(this);
+      this.soundManager = new SoundManager(this);
 
       // データ読み込み
       this.enemiesData = this.cache.json.get('enemies') || DEFAULT_DATA.enemies;
@@ -360,6 +361,7 @@ class GameScene extends Phaser.Scene {
     // 長さチェック
     const totalLength = this.calculateLineLength();
     if (totalLength < this.wallMinLength) {
+      this.soundManager.play('sfx_draw_cancel');
       return; // 短すぎる
     }
 
@@ -403,6 +405,7 @@ class GameScene extends Phaser.Scene {
 
     this.walls.push(wall);
     this.stats.wallsUsed++;
+    this.soundManager.play('sfx_draw');
   }
 
   getWallData(wallId) {
@@ -446,6 +449,7 @@ class GameScene extends Phaser.Scene {
   }
 
   showDirectionWarning(directions) {
+    this.soundManager.play('sfx_wave_start');
     const arrows = [];
 
     directions.forEach(dir => {
@@ -729,6 +733,7 @@ class GameScene extends Phaser.Scene {
               enemy.hp = 0; // 自爆
               enemy.lastHitWall = wall; // キルした壁を記録
               this.createExplosionEffect(enemy.sprite.x, enemy.sprite.y);
+              this.soundManager.play('sfx_bomber_explode');
               break;
             }
             // シールド：1回だけすり抜け（typeでも判定）
@@ -736,6 +741,7 @@ class GameScene extends Phaser.Scene {
               console.log('[GameScene] シールドすり抜け開始');
               enemy.shieldActive = false;      // シールド消費
               enemy.isPassingThrough = true;   // 通過中フラグON
+              this.soundManager.play('sfx_shield_break');
 
               // 500ms後に通過完了（壁を抜けるのに十分な時間）
               this.time.delayedCall(500, () => {
@@ -771,6 +777,7 @@ class GameScene extends Phaser.Scene {
             else {
               enemy.takeDamage(wall.wallData, wall.damageMultiplier);
               enemy.lastHitWall = wall; // ダメージを与えた壁を記録
+              this.soundManager.play('sfx_hit');
             }
           }
         }
@@ -830,6 +837,7 @@ class GameScene extends Phaser.Scene {
   onEnemyReachCPU(enemy) {
     this.cpuHp--;
     this.stats.damageTaken++;
+    this.soundManager.play('sfx_cpu_damage');
     console.log('[GameScene] CPUダメージ! HP:', this.cpuHp, '/', this.cpuMaxHp);
 
     this.updateCPUExpression();
@@ -869,6 +877,7 @@ class GameScene extends Phaser.Scene {
     // スポナー：死亡時に小型バグを3体召喚
     if (enemy.data.special === 'spawn_on_death') {
       console.log('[GameScene] スポナーが小型バグを召喚！');
+      this.soundManager.play('sfx_spawner_spawn');
       for (let i = 0; i < 3; i++) {
         const offsetX = (Math.random() - 0.5) * 50;
         const offsetY = (Math.random() - 0.5) * 50;
@@ -898,6 +907,7 @@ class GameScene extends Phaser.Scene {
   }
 
   createKillEffect(x, y) {
+    this.soundManager.play('sfx_kill');
     // パーティクル風のエフェクト
     for (let i = 0; i < 8; i++) {
       const particle = this.add.graphics();
@@ -923,6 +933,7 @@ class GameScene extends Phaser.Scene {
   }
 
   onWaveClear() {
+    this.soundManager.play('sfx_wave_clear');
     this.score += 100; // ウェーブクリアボーナス
     this.currentWave++;
 
@@ -947,6 +958,7 @@ class GameScene extends Phaser.Scene {
   stageClear() {
     if (this.isCleared) return;
     this.isCleared = true;
+    this.soundManager.play('sfx_stage_clear');
 
     // クリアタイム計算
     this.stats.clearTime = Date.now() - this.startTime;
@@ -996,6 +1008,7 @@ class GameScene extends Phaser.Scene {
   gameOver() {
     if (this.isGameOver) return;
     this.isGameOver = true;
+    this.soundManager.play('sfx_game_over');
 
     // クリアタイム計算
     this.stats.clearTime = Date.now() - this.startTime;
@@ -1367,6 +1380,7 @@ class Enemy {
         this.stealthVisible = !this.stealthVisible;
         this.sprite.setAlpha(this.stealthVisible ? 1 : 0.2);
         this.lastStealthToggle = now;
+        if (this.scene.soundManager) this.scene.soundManager.play('sfx_stealth_toggle');
       }
     }
 
@@ -1377,6 +1391,7 @@ class Enemy {
       if (shouldDash !== this.dashActive) {
         this.dashActive = shouldDash;
         this.speed = shouldDash ? this.baseSpeed * 3 : this.baseSpeed;
+        if (shouldDash && this.scene.soundManager) this.scene.soundManager.play('sfx_dasher_dash');
         // ダッシュ中のビジュアル
         if (shouldDash) {
           this.scene.tweens.add({

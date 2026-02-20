@@ -15,6 +15,7 @@ class UIScene extends Phaser.Scene {
 
   create() {
     this.assetManager = new AssetManager(this);
+    this.soundManager = new SoundManager(this);
     const { WIDTH, UI_TOP_HEIGHT, GAME_AREA_BOTTOM } = GAME_CONFIG;
 
     // ステージデータ取得
@@ -98,6 +99,9 @@ class UIScene extends Phaser.Scene {
 
     // ポーズボタン
     this.createPauseButton();
+
+    // ミュートボタン
+    this.createMuteButton();
   }
 
   createPauseButton() {
@@ -121,8 +125,50 @@ class UIScene extends Phaser.Scene {
     btn.setInteractive({ useHandCursor: true });
 
     btn.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
       this.togglePause();
     });
+  }
+
+  createMuteButton() {
+    const x = GAME_CONFIG.WIDTH - 75;
+    const y = 25;
+    const btn = this.add.container(x, y);
+
+    this.muteBg = this.add.graphics();
+    this.muteIcon = this.add.text(0, 0, this.soundManager.isMuted() ? 'M' : 'S', {
+      fontSize: '14px',
+      color: this.soundManager.isMuted() ? '#ff4444' : '#00ff00',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    this.drawMuteButtonBg();
+
+    btn.add([this.muteBg, this.muteIcon]);
+    btn.setSize(30, 24);
+    btn.setInteractive({ useHandCursor: true });
+
+    btn.on('pointerdown', () => {
+      const muted = this.soundManager.toggleMute();
+      // GameSceneのSoundManagerも同期
+      const gameScene = this.scene.get('GameScene');
+      if (gameScene && gameScene.soundManager) {
+        gameScene.soundManager.setMuted(muted);
+      }
+      this.muteIcon.setText(muted ? 'M' : 'S');
+      this.muteIcon.setColor(muted ? '#ff4444' : '#00ff00');
+      this.drawMuteButtonBg();
+    });
+  }
+
+  drawMuteButtonBg() {
+    this.muteBg.clear();
+    const isMuted = this.soundManager.isMuted();
+    this.muteBg.fillStyle(isMuted ? 0x440000 : 0x004400, 0.8);
+    this.muteBg.lineStyle(1, isMuted ? 0xff4444 : 0x00ff00, 0.8);
+    this.muteBg.fillRoundedRect(-15, -12, 30, 24, 4);
+    this.muteBg.strokeRoundedRect(-15, -12, 30, 24, 4);
   }
 
   togglePause() {
@@ -292,6 +338,7 @@ class UIScene extends Phaser.Scene {
       container.setInteractive({ useHandCursor: true });
 
       container.on('pointerdown', () => {
+        this.soundManager.play('sfx_button_click');
         GameData.selectedWallType = wallId;
         this.updateWallIconSelection();
       });

@@ -10,6 +10,7 @@ class TitleScene extends Phaser.Scene {
 
   create() {
     this.assetManager = new AssetManager(this);
+    this.soundManager = new SoundManager(this);
     const { WIDTH, HEIGHT } = GAME_CONFIG;
 
     // 背景
@@ -149,6 +150,7 @@ class TitleScene extends Phaser.Scene {
     });
 
     container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
       this.scene.start('StageSelectScene', { difficulty });
     });
   }
@@ -192,7 +194,10 @@ class TitleScene extends Phaser.Scene {
       bg.strokeRoundedRect(-width/2, -height/2, width, height, 8);
     });
 
-    container.on('pointerdown', onClick);
+    container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
+      onClick();
+    });
   }
 }
 

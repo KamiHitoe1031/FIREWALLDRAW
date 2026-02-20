@@ -100,11 +100,25 @@ class PreloadScene extends Phaser.Scene {
     this.load.json('stages', 'assets/data/stages.json' + cacheBuster);
     this.load.json('upgrades', 'assets/data/upgrades.json' + cacheBuster);
 
-    // === 音声（なくてもOK） ===
-    this.load.audio('bgm_game', 'assets/audio/bgm/game.mp3');
+    // === 効果音（なくてもOK） ===
     this.load.audio('sfx_draw', 'assets/audio/sfx/draw_wall.mp3');
+    this.load.audio('sfx_draw_cancel', 'assets/audio/sfx/draw_cancel.mp3');
     this.load.audio('sfx_hit', 'assets/audio/sfx/hit.mp3');
     this.load.audio('sfx_kill', 'assets/audio/sfx/kill.mp3');
+    this.load.audio('sfx_cpu_damage', 'assets/audio/sfx/cpu_damage.mp3');
+    this.load.audio('sfx_wave_start', 'assets/audio/sfx/wave_start.mp3');
+    this.load.audio('sfx_wave_clear', 'assets/audio/sfx/wave_clear.mp3');
+    this.load.audio('sfx_stage_clear', 'assets/audio/sfx/stage_clear.mp3');
+    this.load.audio('sfx_game_over', 'assets/audio/sfx/game_over.mp3');
+    this.load.audio('sfx_bomber_explode', 'assets/audio/sfx/bomber_explode.mp3');
+    this.load.audio('sfx_shield_break', 'assets/audio/sfx/shield_break.mp3');
+    this.load.audio('sfx_spawner_spawn', 'assets/audio/sfx/spawner_spawn.mp3');
+    this.load.audio('sfx_stealth_toggle', 'assets/audio/sfx/stealth_toggle.mp3');
+    this.load.audio('sfx_dasher_dash', 'assets/audio/sfx/dasher_dash.mp3');
+    this.load.audio('sfx_button_click', 'assets/audio/sfx/button_click.mp3');
+    this.load.audio('sfx_button_hover', 'assets/audio/sfx/button_hover.mp3');
+    this.load.audio('sfx_new_record', 'assets/audio/sfx/new_record.mp3');
+    this.load.audio('sfx_coin_reward', 'assets/audio/sfx/coin_reward.mp3');
   }
 
   create() {

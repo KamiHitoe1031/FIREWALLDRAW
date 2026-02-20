@@ -14,6 +14,7 @@ class StageSelectScene extends Phaser.Scene {
 
   create() {
     const { WIDTH, HEIGHT } = GAME_CONFIG;
+    this.soundManager = new SoundManager(this);
 
     // 背景
     this.createBackground();
@@ -164,6 +165,7 @@ class StageSelectScene extends Phaser.Scene {
       });
 
       container.on('pointerdown', () => {
+        this.soundManager.play('sfx_button_click');
         console.log('[StageSelectScene] ステージボタンクリック - stageId:', stage.id);
         this.startGame(stage.id);
       });
@@ -210,6 +212,7 @@ class StageSelectScene extends Phaser.Scene {
     });
 
     container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
       this.scene.start('RankingScene', {
         stageId: 1,
         difficulty: this.difficulty,
@@ -258,6 +261,7 @@ class StageSelectScene extends Phaser.Scene {
     });
 
     container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
       this.scene.start('TitleScene');
     });
   }
