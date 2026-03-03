@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIREWALL DRAW — 技術ドキュメント</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0d1117;
+      --bg-light: #161b22;
+      --bg-lighter: #1c2333;
+      --accent: #00aaff;
+      --accent-dim: rgba(0, 170, 255, 0.15);
+      --accent-glow: rgba(0, 170, 255, 0.4);
+      --text: #e6edf3;
+      --text-dim: #8b949e;
+      --border: #30363d;
+      --fire: #ff6600;
+      --ice: #00ffff;
+      --thunder: #ffff00;
+      --poison: #9900ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --orange: #d29922;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ヘッダー */
+    .header {
+      background: linear-gradient(180deg, var(--bg-light) 0%, var(--bg) 100%);
+      border-bottom: 2px solid var(--accent);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--accent-glow);
+    }
+    .header .back-link {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 14px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .header .back-link:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* レイアウト */
+    .layout {
+      display: flex;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* サイドバー */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+    }
+    .sidebar a {
+      display: block;
+      padding: 8px 20px;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .sidebar a:hover {
+      color: var(--text);
+      background: var(--accent-dim);
+      border-left-color: var(--accent);
+    }
+    .sidebar a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      font-weight: 600;
+    }
+    .sidebar .section-title {
+      padding: 16px 20px 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    /* メインコンテンツ */
+    .content {
+      flex: 1;
+      padding: 32px 40px;
+      min-width: 0;
+    }
+
+    /* セクション */
+    section {
+      margin-bottom: 48px;
+      scroll-margin-top: 80px;
+    }
+
+    h2 {
+      color: var(--accent);
+      font-size: 24px;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    h3 {
+      color: #58a6ff;
+      font-size: 18px;
+      margin: 24px 0 12px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    h4 {
+      color: var(--text);
+      font-size: 15px;
+      margin: 16px 0 8px;
+    }
+
+    p { margin-bottom: 12px; }
+
+    /* テーブル */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 13px;
+    }
+    th {
+      background: var(--bg-light);
+      color: var(--accent);
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--accent);
+      font-weight: 600;
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:hover td {
+      background: var(--bg-lighter);
+    }
+    code {
+      background: var(--bg-light);
+      color: #79c0ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: 'Fira Code', 'Consolas', monospace;
+    }
+
+    /* コードブロック */
+    pre {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 12px 0 20px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: var(--text);
+    }
+
+    /* インフォボックス */
+    .info-box {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-dim);
+      padding: 14px 18px;
+      border-radius: 0 6px 6px 0;
+      margin: 16px 0;
+    }
+    .info-box.warn {
+      border-left-color: var(--orange);
+      background: rgba(210, 153, 34, 0.1);
+    }
+    .info-box.tip {
+      border-left-color: var(--green);
+      background: rgba(63, 185, 80, 0.1);
+    }
+    .info-box strong {
+      color: var(--accent);
+    }
+    .info-box.warn strong { color: var(--orange); }
+    .info-box.tip strong { color: var(--green); }
+
+    /* ツリー */
+    .tree {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 20px;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 12px 0 20px;
+    }
+    .tree .dir { color: var(--accent); font-weight: 600; }
+    .tree .file { color: var(--text); }
+    .tree .comment { color: var(--text-dim); }
+
+    /* フローチャート */
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 16px 0;
+    }
+    .flow-item {
+      background: var(--bg-lighter);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      text-align: center;
+      min-width: 100px;
+    }
+    .flow-item.main {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .flow-item.parallel {
+      border-color: var(--red);
+      background: rgba(248, 81, 73, 0.1);
+    }
+    .flow-arrow { color: var(--text-dim); font-size: 18px; }
+
+    /* タグ */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tag-js { background: rgba(241, 196, 15, 0.15); color: #f1c40f; }
+    .tag-phaser { background: rgba(0, 170, 255, 0.15); color: #00aaff; }
+    .tag-api { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
+    .tag-data { background: rgba(153, 0, 255, 0.15); color: #b87aff; }
+
+    /* 壁カラー */
+    .wall-color {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    /* カード */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+    }
+    .card {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      transition: all 0.2s;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-dim);
+    }
+    .card h4 {
+      color: var(--accent);
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+    .card p {
+      color: var(--text-dim);
+      font-size: 13px;
+      margin: 0;
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { padding: 20px 16px; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+
+    /* スクロールバー */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>FIREWALL DRAW — 技術ドキュメント</h1>
+  <a href="../index.html" class="back-link">&#9664; ゲームに戻る</a>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="section-title">概要</div>
+    <a href="#overview" class="active">プロジェクト概要</a>
+    <a href="#tech-stack">技術スタック</a>
+    <a href="#design-features">設計上の特徴</a>
+
+    <div class="section-title">構造</div>
+    <a href="#folder-structure">フォルダ構造</a>
+    <a href="#file-roles">ファイル役割一覧</a>
+    <a href="#load-order">読み込み順序</a>
+
+    <div class="section-title">アーキテクチャ</div>
+    <a href="#architecture">全体構成</a>
+    <a href="#scene-flow">シーン遷移</a>
+    <a href="#managers">マネージャー</a>
+    <a href="#global-state">グローバル状態</a>
+    <a href="#fallback">フォールバック戦略</a>
+
+    <div class="section-title">シーン</div>
+    <a href="#scenes">シーン一覧</a>
+    <a href="#game-scene">GameScene</a>
+    <a href="#ui-scene">UIScene</a>
+
+    <div class="section-title">データ</div>
+    <a href="#enemies">敵データ</a>
+    <a href="#walls">壁データ</a>
+    <a href="#stages">ステージデータ</a>
+    <a href="#upgrades">アップグレード</a>
+    <a href="#save-data">セーブデータ</a>
+
+    <div class="section-title">アセット</div>
+    <a href="#images">画像</a>
+    <a href="#sfx">効果音</a>
+    <a href="#json-data">JSONデータ</a>
+    <a href="#placeholders">プレースホルダー</a>
+  </nav>
+
+  <main class="content">
+
+    <!-- ===== 概要 ===== -->
+    <section id="overview">
+      <h2>プロジェクト概要</h2>
+      <p><strong>FIREWALL DRAW</strong> はマウスで壁（ファイアウォール）を描いてCPUを守るタワーディフェンスゲーム。Phaser 3 で構築され、ブラウザ上で動作する。</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <h4>ゲーム内容</h4>
+          <p>マウスドラッグで壁を描き、四方から侵入するウイルス（敵）からCPUを防衛。10ステージ構成、各ステージに複数ウェーブ。</p>
+        </div>
+        <div class="card">
+          <h4>難易度</h4>
+          <p>ノーマル / ハードの2難易度。ハードは壁の長さ制限・敵数増加・CPU HP減少。</p>
+        </div>
+        <div class="card">
+          <h4>永続化</h4>
+          <p>localStorageにセーブ。復活の呪文（Base64）でデータ共有可能。オンラインランキング対応。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tech-stack">
+      <h3>技術スタック</h3>
+      <table>
+        <tr><th>技術</th><th>バージョン</th><th>用途</th></tr>
+        <tr><td><span class="tag tag-phaser">Phaser</span></td><td>3.80.0</td><td>ゲームフレームワーク（CDN読み込み）</td></tr>
+        <tr><td><span class="tag tag-js">JavaScript</span></td><td>ES6+</td><td>実装言語</td></tr>
+        <tr><td><span class="tag tag-data">localStorage</span></td><td>Web API</td><td>セーブデータ永続化</td></tr>
+        <tr><td><span class="tag tag-api">Fetch API</span></td><td>Web API</td><td>ランキングAPI通信</td></tr>
+        <tr><td><span class="tag tag-api">Cloudflare Workers</span></td><td>-</td><td>ホスティング + ランキングAPI</td></tr>
+      </table>
+    </section>
+
+    <section id="design-features">
+      <h3>設計上の特徴</h3>
+
+      <div class="info-box tip">
+        <strong>オフライン対応設計</strong><br>
+        <code>file://</code> プロトコルでも動作するよう、3段階のフォールバック戦略を採用：<br>
+        1. 画像 → AssetManager がプレースホルダーを動的生成<br>
+        2. JSON → DefaultData.js のハードコードデータを使用<br>
+        3. SE → 静かにスキップ（エラーなし）
+      </div>
+
+      <div class="info-box">
+        <strong>イベント駆動のシーン間通信</strong><br>
+        GameScene と UIScene は並列実行され、Phaserのイベントシステムで疎結合に通信。
+      </div>
+    </section>
+
+    <!-- ===== フォルダ構造 ===== -->
+    <section id="folder-structure">
+      <h2>フォルダ構造</h2>
+
+      <div class="tree"><span class="dir">firewall-draw/</span>
+├── index.html                  <span class="comment">← メインHTML</span>
+├── wrangler.json               <span class="comment">← Cloudflare Workers設定</span>
+│
+├── <span class="dir">js/</span>
+│   ├── main.js                 <span class="comment">← エントリーポイント・Phaser設定</span>
+│   ├── AssetManager.js         <span class="comment">← アセット管理・プレースホルダー</span>
+│   ├── PlaceholderConfig.js    <span class="comment">← プレースホルダー設定</span>
+│   │
+│   ├── <span class="dir">data/</span>
+│   │   └── DefaultData.js      <span class="comment">← JSONフォールバック用データ</span>
+│   │
+│   ├── <span class="dir">utils/</span>
+│   │   ├── SaveManager.js      <span class="comment">← localStorage・復活の呪文</span>
+│   │   ├── SoundManager.js     <span class="comment">← SE再生（存在チェック付き）</span>
+│   │   └── RankingManager.js   <span class="comment">← ランキングAPI通信</span>
+│   │
+│   └── <span class="dir">scenes/</span>                 <span class="comment">← Phaserシーン（11個）</span>
+│       ├── BootScene.js        <span class="comment">← 起動・ローディング</span>
+│       ├── PreloadScene.js     <span class="comment">← 全アセット読み込み</span>
+│       ├── TitleScene.js       <span class="comment">← タイトル・難易度選択</span>
+│       ├── StageSelectScene.js <span class="comment">← ステージ選択（2x5）</span>
+│       ├── BriefingScene.js    <span class="comment">← 敵情報表示</span>
+│       ├── GameScene.js        <span class="comment">← メインゲームプレイ</span>
+│       ├── UIScene.js          <span class="comment">← HUD（並列実行）</span>
+│       ├── ResultScene.js      <span class="comment">← リザルト画面</span>
+│       ├── RankingScene.js     <span class="comment">← ランキング表示</span>
+│       ├── HelpScene.js        <span class="comment">← ヘルプ（3ページ）</span>
+│       └── DataScene.js        <span class="comment">← データ管理・復活の呪文</span>
+│
+├── <span class="dir">assets/</span>
+│   ├── <span class="dir">images/</span>
+│   │   ├── <span class="dir">backgrounds/</span>        <span class="comment">← 背景画像</span>
+│   │   ├── <span class="dir">enemies/</span>            <span class="comment">← 敵スプライト（10種）</span>
+│   │   ├── <span class="dir">cpu/</span>                <span class="comment">← CPU表情（4段階）</span>
+│   │   └── <span class="dir">ui/</span>                 <span class="comment">← UIパーツ</span>
+│   ├── <span class="dir">audio/</span>
+│   │   ├── <span class="dir">bgm/</span>                <span class="comment">← BGM（未実装）</span>
+│   │   └── <span class="dir">sfx/</span>                <span class="comment">← 効果音（17個）</span>
+│   └── <span class="dir">data/</span>
+│       ├── enemies.json        <span class="comment">← 敵定義</span>
+│       ├── walls.json          <span class="comment">← 壁定義</span>
+│       └── stages.json         <span class="comment">← ステージ定義</span>
+│
+├── <span class="dir">css/</span>
+│   └── style.css               <span class="comment">← スタイル</span>
+│
+└── <span class="dir">docs/</span>
+    └── index.html              <span class="comment">← このドキュメント</span></div>
+    </section>
+
+    <section id="file-roles">
+      <h3>ファイル役割一覧</h3>
+
+      <h4>マネージャークラス</h4>
+      <table>
+        <tr><th>ファイル</th><th>役割</th></tr>
+        <tr><td><code>AssetManager.js</code></td><td>画像存在チェック → プレースホルダー自動生成。ボタン・HPバーの統一生成</td></tr>
+        <tr><td><code>PlaceholderConfig.js</code></td><td>各敵・UI・壁のプレースホルダーパラメータ（色・形・サイズ・ラベル）</td></tr>
+        <tr><td><code>SaveManager.js</code></td><td>localStorage保存/読み込み、マイグレーション、復活の呪文（Base64）</td></tr>
+        <tr><td><code>SoundManager.js</code></td><td>SE再生（存在チェック・連打制限50ms）、音量・ミュート管理</td></tr>
+        <tr><td><code>RankingManager.js</code></td><td>Cloudflare Workers APIへのスコア送信・ランキング取得（タイムアウト8秒）</td></tr>
+      </table>
+
+      <h4>データ</h4>
+      <table>
+        <tr><th>ファイル</th><th>役割</th></tr>
+        <tr><td><code>DefaultData.js</code></td><td>難易度設定・敵10種・壁5種・ステージ10個・アップグレード4種のフォールバック</td></tr>
+        <tr><td><code>enemies.json</code></td><td>敵パラメータ定義（HP、速度、報酬、特殊能力）</td></tr>
+        <tr><td><code>walls.json</code></td><td>壁パラメータ定義（ダメージ、色、解放条件）</td></tr>
+        <tr><td><code>stages.json</code></td><td>ステージ定義（ウェーブ構成、敵出現パターン）</td></tr>
+      </table>
+    </section>
+
+    <section id="load-order">
+      <h3>スクリプト読み込み順序</h3>
+      <p><code>index.html</code> での読み込み順（依存関係に基づく）：</p>
+      <pre><code>&lt;!-- 1. Phaser本体（CDN） --&gt;
+&lt;script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"&gt;&lt;/script&gt;
+
+&lt;!-- 2. グローバル定数・デフォルトデータ --&gt;
+&lt;script src="js/data/DefaultData.js"&gt;&lt;/script&gt;
+
+&lt;!-- 3. ユーティリティ（依存なし） --&gt;
+&lt;script src="js/utils/SaveManager.js"&gt;&lt;/script&gt;
+&lt;script src="js/utils/RankingManager.js"&gt;&lt;/script&gt;
+&lt;script src="js/utils/SoundManager.js"&gt;&lt;/script&gt;
+
+&lt;!-- 4. アセット管理 --&gt;
+&lt;script src="js/PlaceholderConfig.js"&gt;&lt;/script&gt;
+&lt;script src="js/AssetManager.js"&gt;&lt;/script&gt;
+
+&lt;!-- 5. シーン（11個） --&gt;
+&lt;script src="js/scenes/BootScene.js"&gt;&lt;/script&gt;
+... （計11ファイル）
+
+&lt;!-- 6. エントリーポイント（最後） --&gt;
+&lt;script src="js/main.js"&gt;&lt;/script&gt;</code></pre>
+    </section>
+
+    <!-- ===== アーキテクチャ ===== -->
+    <section id="architecture">
+      <h2>アーキテクチャ</h2>
+
+      <h3>全体構成</h3>
+      <pre><code>┌─────────────────────────────────────────────────────┐
+│  index.html                                         │
+│  └── main.js  (GAME_CONFIG / GameData / Phaser起動) │
+└─────────┬───────────────────────────────────────────┘
+          │
+    ┌─────┴─────────────────────────────┐
+    │          マネージャー層             │
+    │  ┌──────────┐  ┌──────────────┐   │
+    │  │AssetMgr  │  │ SoundMgr     │   │
+    │  │画像+PH   │  │ SE再生       │   │
+    │  └──────────┘  └──────────────┘   │
+    │  ┌──────────┐  ┌──────────────┐   │
+    │  │SaveMgr   │  │ RankingMgr   │   │
+    │  │localStorage│ │ API通信      │   │
+    │  └──────────┘  └──────────────┘   │
+    └─────┬─────────────────────────────┘
+          │
+    ┌─────┴─────────────────────────────┐
+    │            シーン層                 │
+    │                                    │
+    │  Boot → Preload → Title            │
+    │                    ├→ Help          │
+    │                    ├→ Data          │
+    │                    └→ StageSelect   │
+    │                        └→ Briefing  │
+    │                            └→ Game  │
+    │                      ┌─────┤ ┌────┐ │
+    │                      │UI(並列)│    │ │
+    │                      └─────┘ └────┘ │
+    │                            └→Result │
+    │                              └→Rank │
+    └─────┬─────────────────────────────┘
+          │
+    ┌─────┴─────────────────────────────┐
+    │           データ層                  │
+    │  DefaultData.js  ←→  *.json       │
+    │  PlaceholderConfig                 │
+    └───────────────┬───────────────────┘
+                    │
+    ┌───────────────┴───────────────────┐
+    │          外部サービス               │
+    │  localStorage   Cloudflare Workers │
+    │  jsDelivr CDN (Phaser 3.80.0)     │
+    └───────────────────────────────────┘</code></pre>
+    </section>
+
+    <section id="scene-flow">
+      <h3>シーン遷移</h3>
+      <div class="flow">
+        <div class="flow-item">Boot</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">Preload</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">Title</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">StageSelect</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">Briefing</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item main">GameScene</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">Result</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">Ranking</div>
+      </div>
+
+      <div class="info-box">
+        <strong>並列実行</strong>: GameScene 起動時に <code>scene.launch('UIScene')</code> で UIScene を並列起動。イベント駆動で通信。
+      </div>
+
+      <p>Title からの分岐：</p>
+      <div class="flow">
+        <div class="flow-item">Title</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">HelpScene</div>
+      </div>
+      <div class="flow">
+        <div class="flow-item">Title</div>
+        <span class="flow-arrow">&#8594;</span>
+        <div class="flow-item">DataScene</div>
+      </div>
+    </section>
+
+    <section id="managers">
+      <h3>マネージャーパターン</h3>
+
+      <h4>AssetManager（インスタンス型）</h4>
+      <p>各シーンで <code>new AssetManager(scene)</code> として生成。画像の存在チェックとプレースホルダー自動生成を一元管理。</p>
+      <pre><code>const assetManager = new AssetManager(this);
+
+// 画像があればSprite、なければGraphicsでプレースホルダー
+const sprite = assetManager.getSprite(x, y, 'enemy_bug', config);
+
+// UIボタン生成・HPバー生成
+const button = assetManager.createButton(x, y, 'btn_start', config);
+const hpBar  = assetManager.createHPBar(x, y, width, height);</code></pre>
+
+      <h4>SaveManager（静的クラス）</h4>
+      <p>全シーンから <code>SaveManager.method()</code> でアクセス。localStorageを使ったセーブデータ管理。</p>
+
+      <h4>SoundManager（インスタンス型）</h4>
+      <p>SE再生前に3段階チェック：</p>
+      <pre><code>play(key) 呼び出し
+  ├─ ミュート状態？ → return null
+  ├─ 連打制限（50ms以内）？ → return null
+  ├─ cache.audio.exists(key)？ → return null
+  └─ 再生成功 → Sound オブジェクト返却</code></pre>
+
+      <h4>RankingManager（静的クラス）</h4>
+      <p>Cloudflare Workers APIとの通信。AbortControllerで8秒タイムアウト。</p>
+      <pre><code>POST /submit    → スコア送信
+GET  /rankings  → トップ20取得</code></pre>
+    </section>
+
+    <section id="global-state">
+      <h3>グローバル状態</h3>
+
+      <h4>GAME_CONFIG（定数）</h4>
+      <pre><code>GAME_CONFIG = {
+  WIDTH: 800,  HEIGHT: 600,
+  UI_TOP_HEIGHT: 50,  UI_BOTTOM_HEIGHT: 50,
+  GAME_AREA_TOP: 50,  GAME_AREA_BOTTOM: 550,
+  CPU_X: 400,  CPU_Y: 300
+}</code></pre>
+
+      <h4>DIFFICULTY_SETTINGS（定数）</h4>
+      <table>
+        <tr><th>パラメータ</th><th>ノーマル</th><th>ハード</th></tr>
+        <tr><td>壁の最大長さ</td><td>300px</td><td>200px</td></tr>
+        <tr><td>敵数倍率</td><td>x1.0</td><td>x1.5</td></tr>
+        <tr><td>CPU HP</td><td>ステージ定義値</td><td>定義値 - 2（最低1）</td></tr>
+      </table>
+    </section>
+
+    <section id="fallback">
+      <h3>フォールバック戦略</h3>
+      <div class="info-box warn">
+        <strong>同期ルール</strong>: <code>assets/data/*.json</code> と <code>DefaultData.js</code> は常に同じ内容を維持すること。
+      </div>
+
+      <table>
+        <tr><th>対象</th><th>正常時</th><th>失敗時</th></tr>
+        <tr><td>画像</td><td><code>textures.exists(key)</code> → Sprite生成</td><td>AssetManager が Graphics API でプレースホルダー描画</td></tr>
+        <tr><td>JSON</td><td><code>cache.json.get(key)</code> → データ使用</td><td><code>DEFAULT_DATA</code> のハードコードデータ使用</td></tr>
+        <tr><td>SE</td><td><code>cache.audio.exists(key)</code> → 再生</td><td>静かにスキップ（エラーなし）</td></tr>
+      </table>
+    </section>
+
+    <!-- ===== シーン ===== -->
+    <section id="scenes">
+      <h2>シーン詳細</h2>
+
+      <table>
+        <tr><th>#</th><th>シーン</th><th>主な役割</th><th>遷移先</th></tr>
+        <tr><td>1</td><td><code>BootScene</code></td><td>最小ローディング表示</td><td>→ Preload</td></tr>
+        <tr><td>2</td><td><code>PreloadScene</code></td><td>全アセット読み込み + エラー記録</td><td>→ Title</td></tr>
+        <tr><td>3</td><td><code>TitleScene</code></td><td>タイトル画面・難易度選択</td><td>→ StageSelect / Help / Data</td></tr>
+        <tr><td>4</td><td><code>StageSelectScene</code></td><td>ステージ選択（2x5グリッド）</td><td>→ Briefing</td></tr>
+        <tr><td>5</td><td><code>BriefingScene</code></td><td>ステージ開始前の敵情報表示</td><td>→ GameScene</td></tr>
+        <tr><td>6</td><td><code>GameScene</code></td><td>メインゲームロジック</td><td>→ Result</td></tr>
+        <tr><td>7</td><td><code>UIScene</code></td><td>HUD層（GameSceneと並列）</td><td>-</td></tr>
+        <tr><td>8</td><td><code>ResultScene</code></td><td>クリア/ゲームオーバー結果</td><td>→ Ranking / Title</td></tr>
+        <tr><td>9</td><td><code>RankingScene</code></td><td>オンラインランキング</td><td>→ Title</td></tr>
+        <tr><td>10</td><td><code>HelpScene</code></td><td>ヘルプ（3ページ）</td><td>→ Title</td></tr>
+        <tr><td>11</td><td><code>DataScene</code></td><td>復活の呪文・データ管理</td><td>→ Title</td></tr>
+      </table>
+    </section>
+
+    <section id="game-scene">
+      <h3>GameScene（メインゲームロジック）</h3>
+
+      <h4>初期化</h4>
+      <pre><code>// シーン間データ受け取り + アップグレード反映
+this.maxWalls = 3 + upgrades.wall_count;
+this.wallDuration = base + (upgrades.wall_duration * bonus);
+this.wallDamageMultiplier = 1.0 + (upgrades.wall_damage * 0.1);
+this.cpuMaxHp = stageData.cpuHp + (upgrades.cpu_hp * 2);</code></pre>
+
+      <h4>壁描画システム</h4>
+      <pre><code>マウスダウン → ドラッグ開始地点記録
+マウスムーブ → ライン描画（最大長制限あり）
+マウスアップ → 壁オブジェクト生成
+  ├─ 物理ボディ設定（静的）
+  ├─ タイマー（wallDuration後に消滅）
+  ├─ 壁タイプ別の色・エフェクト
+  └─ SE再生（draw_wall）</code></pre>
+
+      <h4>イベント発火</h4>
+      <table>
+        <tr><th>イベント</th><th>タイミング</th><th>データ</th></tr>
+        <tr><td><code>cpuDamaged</code></td><td>CPU被ダメージ時</td><td><code>{ hp, maxHp }</code></td></tr>
+        <tr><td><code>scoreChanged</code></td><td>スコア変動時</td><td><code>{ score }</code></td></tr>
+        <tr><td><code>waveCleared</code></td><td>ウェーブクリア時</td><td><code>{ wave, totalWaves }</code></td></tr>
+      </table>
+    </section>
+
+    <section id="ui-scene">
+      <h3>UIScene（HUD並列実行）</h3>
+      <p>GameSceneと並列実行。イベント購読でUI更新：</p>
+      <pre><code>gameScene.events.on('cpuDamaged', (d) => this.updateHP(d.hp, d.maxHp));
+gameScene.events.on('scoreChanged', (d) => this.updateScore(d.score));
+gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves));</code></pre>
+
+      <table>
+        <tr><th>要素</th><th>位置</th><th>内容</th></tr>
+        <tr><td>HPバー</td><td>上部左</td><td>CPU残りHP（色変化あり）</td></tr>
+        <tr><td>スコア</td><td>上部右</td><td>現在スコア</td></tr>
+        <tr><td>ウェーブ</td><td>上部中央</td><td>Wave 2/5 形式</td></tr>
+        <tr><td>ポーズ</td><td>右上</td><td>ポーズボタン</td></tr>
+        <tr><td>壁選択</td><td>下部</td><td>解放済み壁タイプ切り替え</td></tr>
+      </table>
+    </section>
+
+    <!-- ===== データ ===== -->
+    <section id="enemies">
+      <h2>ゲームデータ</h2>
+
+      <h3>敵データ（10種類）</h3>
+
+      <h4>基本敵（Phase 1）</h4>
+      <table>
+        <tr><th>ID</th><th>名前</th><th>HP</th><th>速度</th><th>報酬</th><th>特殊能力</th></tr>
+        <tr><td><code>bug_small</code></td><td>小型バグ</td><td>10</td><td>80</td><td>5</td><td>なし</td></tr>
+        <tr><td><code>bug_medium</code></td><td>中型バグ</td><td>25</td><td>60</td><td>15</td><td>なし</td></tr>
+        <tr><td><code>worm</code></td><td>ワーム</td><td>15</td><td>120</td><td>10</td><td>なし（高速）</td></tr>
+        <tr><td><code>trojan</code></td><td>トロイの木馬</td><td>50</td><td>40</td><td>30</td><td>なし（高HP）</td></tr>
+        <tr><td><code>ransom</code></td><td>ランサムウェア</td><td>80</td><td>50</td><td>50</td><td>なし（最高HP）</td></tr>
+      </table>
+
+      <h4>特殊敵（Phase 2）</h4>
+      <table>
+        <tr><th>ID</th><th>名前</th><th>HP</th><th>速度</th><th>報酬</th><th>特殊能力</th></tr>
+        <tr><td><code>bomber</code></td><td>ボマー</td><td>20</td><td>80</td><td>25</td><td>壁に触れると爆発して壁を破壊</td></tr>
+        <tr><td><code>shield</code></td><td>シールド</td><td>15</td><td>100</td><td>35</td><td>最初の壁ダメージを無効化</td></tr>
+        <tr><td><code>spawner</code></td><td>スポナー</td><td>40</td><td>50</td><td>40</td><td>撃破時に小型バグを複数生成</td></tr>
+        <tr><td><code>stealth</code></td><td>ステルス</td><td>12</td><td>120</td><td>30</td><td>一定間隔で透明化</td></tr>
+        <tr><td><code>dasher</code></td><td>ダッシャー</td><td>25</td><td>80</td><td>30</td><td>突然加速して壁をすり抜ける</td></tr>
+      </table>
+    </section>
+
+    <section id="walls">
+      <h3>壁データ（5種類）</h3>
+      <table>
+        <tr><th>ID</th><th>名前</th><th>色</th><th>ダメージ</th><th>特殊効果</th><th>解放</th><th>コスト</th></tr>
+        <tr>
+          <td><code>basic</code></td><td>基本壁</td>
+          <td><span class="wall-color" style="background:#00aaff"></span>#00aaff</td>
+          <td>10</td><td>-</td><td>最初から</td><td>無料</td>
+        </tr>
+        <tr>
+          <td><code>fire</code></td><td>炎の壁</td>
+          <td><span class="wall-color" style="background:#ff6600"></span>#ff6600</td>
+          <td>15</td><td>DoT 3/秒</td><td>ステージ3</td><td>300</td>
+        </tr>
+        <tr>
+          <td><code>ice</code></td><td>氷の壁</td>
+          <td><span class="wall-color" style="background:#00ffff"></span>#00ffff</td>
+          <td>5</td><td>減速 80%</td><td>ステージ5</td><td>500</td>
+        </tr>
+        <tr>
+          <td><code>thunder</code></td><td>雷の壁</td>
+          <td><span class="wall-color" style="background:#ffff00"></span>#ffff00</td>
+          <td>20</td><td>-</td><td>ステージ7</td><td>700</td>
+        </tr>
+        <tr>
+          <td><code>poison</code></td><td>毒の壁</td>
+          <td><span class="wall-color" style="background:#9900ff"></span>#9900ff</td>
+          <td>8</td><td>DoT 5/秒</td><td>ステージ10</td><td>1000</td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="stages">
+      <h3>ステージデータ（10ステージ）</h3>
+      <table>
+        <tr><th>ST</th><th>名前</th><th>CPU HP</th><th>報酬</th><th>Wave数</th></tr>
+        <tr><td>1</td><td>はじまりの防衛</td><td>10</td><td>100</td><td>4</td></tr>
+        <tr><td>2</td><td>二方向からの脅威</td><td>10</td><td>150</td><td>4</td></tr>
+        <tr><td>3</td><td>炎の壁を手に入れろ</td><td>12</td><td>200</td><td>5</td></tr>
+        <tr><td>4</td><td>高速侵入者</td><td>10</td><td>250</td><td>5</td></tr>
+        <tr><td>5</td><td>氷結防衛線</td><td>15</td><td>300</td><td>5</td></tr>
+        <tr><td>6</td><td>爆破工作員</td><td>12</td><td>350</td><td>6</td></tr>
+        <tr><td>7</td><td>雷撃防壁</td><td>15</td><td>400</td><td>6</td></tr>
+        <tr><td>8</td><td>ステルスの脅威</td><td>12</td><td>450</td><td>7</td></tr>
+        <tr><td>9</td><td>総力戦</td><td>18</td><td>500</td><td>7</td></tr>
+        <tr><td>10</td><td>最終防衛</td><td>20</td><td>1000</td><td>8</td></tr>
+      </table>
+
+      <h4>ウェーブ構造の例（ステージ1）</h4>
+      <pre><code>{
+  id: 1, name: "はじまりの防衛",
+  cpuHp: 10, reward: 100, targetWalls: 15,
+  waves: [
+    { enemies: "bug_small:5",  spawnInterval: 1500, directions: ["right","top"] },
+    { enemies: "bug_small:8",  spawnInterval: 1200, directions: ["right","top","left"] },
+    { enemies: "bug_small:5,bug_medium:2", spawnInterval: 1000, directions: ["right","top","left"] },
+    { enemies: "bug_small:8,bug_medium:3", spawnInterval: 800,  directions: ["right","top","left","bottom"] }
+  ]
+}</code></pre>
+    </section>
+
+    <section id="upgrades">
+      <h3>アップグレード（4種類）</h3>
+      <table>
+        <tr><th>ID</th><th>名前</th><th>最大Lv</th><th>コスト推移</th><th>効果</th></tr>
+        <tr><td><code>wall_duration</code></td><td>壁持続時間</td><td>5</td><td>100→200→400→800→1600</td><td>壁の消滅時間を延長</td></tr>
+        <tr><td><code>wall_damage</code></td><td>壁ダメージ</td><td>5</td><td>150→300→600→1200→2400</td><td>ダメージ+10%/Lv</td></tr>
+        <tr><td><code>wall_count</code></td><td>同時壁数</td><td>2</td><td>500→1500</td><td>同時設置数+1</td></tr>
+        <tr><td><code>cpu_hp</code></td><td>CPU HP</td><td>5</td><td>100→200→400→800→1600</td><td>最大HP+2/Lv</td></tr>
+      </table>
+    </section>
+
+    <section id="save-data">
+      <h3>セーブデータ構造</h3>
+      <pre><code>{
+  normal: {
+    clearedStages: [1, 2, 3],
+    highScores: { 1: 1500, 2: 2000, 3: 800 }
+  },
+  hard: {
+    clearedStages: [],
+    highScores: {}
+  },
+  coins: 2500,
+  unlockedWalls: ["basic", "fire"],
+  upgrades: {
+    wall_duration: 2, wall_damage: 1,
+    wall_count: 1, cpu_hp: 2
+  }
+}</code></pre>
+      <div class="info-box">
+        <strong>復活の呪文</strong>: セーブデータを Base64 エンコードした文字列。テキストとして共有・復元可能。
+      </div>
+    </section>
+
+    <!-- ===== アセット ===== -->
+    <section id="images">
+      <h2>アセット一覧</h2>
+
+      <h3>画像アセット</h3>
+
+      <h4>敵スプライト（10種類）</h4>
+      <table>
+        <tr><th>ファイル</th><th>敵ID</th></tr>
+        <tr><td><code>enemies/bug_small.webp</code></td><td>小型バグ</td></tr>
+        <tr><td><code>enemies/bug_medium.png</code></td><td>中型バグ</td></tr>
+        <tr><td><code>enemies/worm.png</code></td><td>ワーム</td></tr>
+        <tr><td><code>enemies/trojan.png</code></td><td>トロイの木馬</td></tr>
+        <tr><td><code>enemies/ransom.png</code></td><td>ランサムウェア</td></tr>
+        <tr><td><code>enemies/bomber.png</code></td><td>ボマー</td></tr>
+        <tr><td><code>enemies/shield.png</code></td><td>シールド</td></tr>
+        <tr><td><code>enemies/spawner.png</code></td><td>スポナー</td></tr>
+        <tr><td><code>enemies/stealth.png</code></td><td>ステルス</td></tr>
+        <tr><td><code>enemies/dasher.png</code></td><td>ダッシャー</td></tr>
+      </table>
+
+      <h4>CPU表情（4段階）</h4>
+      <table>
+        <tr><th>ファイル</th><th>HP範囲</th><th>表情</th></tr>
+        <tr><td><code>cpu/cpu_happy.webp</code></td><td>70%以上</td><td>元気</td></tr>
+        <tr><td><code>cpu/cpu_worried.webp</code></td><td>50〜70%</td><td>不安</td></tr>
+        <tr><td><code>cpu/cpu_scared.webp</code></td><td>25〜50%</td><td>怯え</td></tr>
+        <tr><td><code>cpu/cpu_critical.webp</code></td><td>0〜25%</td><td>危機</td></tr>
+      </table>
+
+      <h4>UIパーツ</h4>
+      <table>
+        <tr><th>ファイル</th><th>用途</th></tr>
+        <tr><td><code>ui/title_logo.png</code></td><td>タイトルロゴ</td></tr>
+        <tr><td><code>ui/btn_start.png</code></td><td>スタートボタン</td></tr>
+        <tr><td><code>ui/btn_retry.png</code></td><td>リトライボタン</td></tr>
+        <tr><td><code>ui/btn_pause.png</code></td><td>ポーズボタン</td></tr>
+        <tr><td><code>ui/arrow_warning.png</code></td><td>敵接近警告矢印</td></tr>
+        <tr><td><code>ui/icon_wall_*.png</code></td><td>壁アイコン各種</td></tr>
+        <tr><td><code>ui/hp_bar_*.png</code></td><td>HPバー素材</td></tr>
+      </table>
+    </section>
+
+    <section id="sfx">
+      <h3>効果音（17個）</h3>
+      <table>
+        <tr><th>カテゴリ</th><th>キー</th><th>タイミング</th></tr>
+        <tr><td rowspan="2">壁</td><td><code>draw_wall</code></td><td>壁描画完了</td></tr>
+        <tr><td><code>draw_cancel</code></td><td>壁キャンセル</td></tr>
+        <tr><td rowspan="5">敵</td><td><code>hit</code></td><td>壁にヒット</td></tr>
+        <tr><td><code>kill</code></td><td>撃破</td></tr>
+        <tr><td><code>bomber_explode</code></td><td>ボマー爆発</td></tr>
+        <tr><td><code>shield_break</code></td><td>シールド破壊</td></tr>
+        <tr><td><code>spawner_spawn</code> / <code>stealth_toggle</code> / <code>dasher_dash</code></td><td>特殊能力発動</td></tr>
+        <tr><td rowspan="4">進行</td><td><code>cpu_damage</code></td><td>CPU被ダメージ</td></tr>
+        <tr><td><code>wave_start</code> / <code>wave_clear</code></td><td>ウェーブ開始・クリア</td></tr>
+        <tr><td><code>stage_clear</code></td><td>ステージクリア</td></tr>
+        <tr><td><code>game_over</code></td><td>ゲームオーバー</td></tr>
+        <tr><td rowspan="2">UI</td><td><code>button_click</code> / <code>button_hover</code></td><td>ボタン操作</td></tr>
+        <tr><td><code>coin_reward</code> / <code>new_record</code></td><td>コイン獲得・新記録</td></tr>
+      </table>
+    </section>
+
+    <section id="json-data">
+      <h3>JSONデータファイル</h3>
+      <table>
+        <tr><th>ファイル</th><th>内容</th><th>フォールバック</th></tr>
+        <tr><td><code>assets/data/enemies.json</code></td><td>敵10種の定義</td><td><code>DEFAULT_DATA.enemies</code></td></tr>
+        <tr><td><code>assets/data/walls.json</code></td><td>壁5種の定義</td><td><code>DEFAULT_DATA.walls</code></td></tr>
+        <tr><td><code>assets/data/stages.json</code></td><td>10ステージの定義</td><td><code>DEFAULT_DATA.stages</code></td></tr>
+      </table>
+    </section>
+
+    <section id="placeholders">
+      <h3>プレースホルダーシステム</h3>
+      <p>画像ファイルが存在しない場合、<code>AssetManager</code> が Phaser の Graphics API でプレースホルダーを動的生成。パラメータは <code>PlaceholderConfig.js</code> で定義。</p>
+
+      <table>
+        <tr><th>形状</th><th>用途</th><th>例</th></tr>
+        <tr><td><code>circle</code></td><td>敵キャラクター</td><td>色付き円 + ラベル</td></tr>
+        <tr><td><code>rect</code></td><td>UI要素・ボタン</td><td>色付き矩形 + ラベル</td></tr>
+        <tr><td><code>triangle</code></td><td>警告マーク</td><td>色付き三角形</td></tr>
+      </table>
+
+      <h4>敵プレースホルダー色</h4>
+      <table>
+        <tr><th>敵ID</th><th>色</th><th>サイズ</th></tr>
+        <tr><td>bug_small</td><td style="color:#3fb950">緑</td><td>24px</td></tr>
+        <tr><td>bug_medium</td><td style="color:#3fb950">緑</td><td>32px</td></tr>
+        <tr><td>worm</td><td style="color:#f1c40f">黄</td><td>28px</td></tr>
+        <tr><td>trojan</td><td style="color:#f85149">赤</td><td>36px</td></tr>
+        <tr><td>ransom</td><td style="color:#b87aff">紫</td><td>40px</td></tr>
+        <tr><td>bomber</td><td style="color:#ff6600">橙</td><td>28px</td></tr>
+        <tr><td>shield</td><td style="color:#00aaff">青</td><td>30px</td></tr>
+        <tr><td>spawner</td><td style="color:#ff69b4">桃</td><td>34px</td></tr>
+        <tr><td>stealth</td><td style="color:#8b949e">灰</td><td>26px</td></tr>
+        <tr><td>dasher</td><td style="color:#00ffff">水</td><td>28px</td></tr>
+      </table>
+    </section>
+
+    <!-- 依存関係 -->
+    <section id="dependencies">
+      <h2>依存関係マトリックス</h2>
+      <table>
+        <tr><th>ファイル</th><th>依存先</th></tr>
+        <tr><td><code>main.js</code></td><td>DefaultData, SaveManager</td></tr>
+        <tr><td><code>GameScene.js</code></td><td>AssetManager, SoundManager, DefaultData, GameData, DIFFICULTY_SETTINGS</td></tr>
+        <tr><td><code>UIScene.js</code></td><td>AssetManager, SoundManager, GameScene.events, GAME_CONFIG</td></tr>
+        <tr><td><code>ResultScene.js</code></td><td>AssetManager, SoundManager, SaveManager, RankingManager</td></tr>
+        <tr><td><code>RankingScene.js</code></td><td>RankingManager, DefaultData</td></tr>
+        <tr><td><code>PreloadScene.js</code></td><td>DefaultData（フォールバック時）</td></tr>
+        <tr><td><code>TitleScene.js</code></td><td>SaveManager, AssetManager, SoundManager</td></tr>
+        <tr><td><code>StageSelectScene.js</code></td><td>SaveManager, AssetManager, SoundManager</td></tr>
+        <tr><td><code>AssetManager.js</code></td><td>PlaceholderConfig</td></tr>
+        <tr><td><code>SaveManager.js</code></td><td>localStorage API</td></tr>
+        <tr><td><code>RankingManager.js</code></td><td>Fetch API</td></tr>
+        <tr><td><code>SoundManager.js</code></td><td>Phaser Sound Manager</td></tr>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // サイドバーのアクティブ状態を管理
+  const links = document.querySelectorAll('.sidebar a');
+  const sections = document.querySelectorAll('section');
+
+  function updateActive() {
+    let current = '';
+    sections.forEach(section => {
+      const top = section.offsetTop - 100;
+      if (window.scrollY >= top) {
+        current = section.getAttribute('id');
+      }
+    });
+    links.forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+    });
+  }
+
+  window.addEventListener('scroll', updateActive);
+  updateActive();
+
+  // スムーズスクロール
+  links.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

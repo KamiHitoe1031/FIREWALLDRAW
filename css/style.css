@@ -7,6 +7,7 @@
 body {
   background-color: #1a1a2e;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
@@ -21,4 +22,22 @@ body {
 
 canvas {
   display: block;
+}
+
+#docs-link {
+  margin-top: 12px;
+  padding: 8px 20px;
+  color: #8b949e;
+  text-decoration: none;
+  font-size: 13px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+#docs-link:hover {
+  color: #00aaff;
+  border-color: #00aaff;
+  background: rgba(0, 170, 255, 0.1);
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.2);
 }
