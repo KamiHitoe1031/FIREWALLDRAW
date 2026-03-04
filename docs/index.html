@@ -321,6 +321,112 @@
       .card-grid { grid-template-columns: 1fr; }
     }
 
+    /* アセット画像プレビュー */
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 14px;
+      margin: 16px 0 24px;
+    }
+    .asset-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .asset-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-dim);
+      transform: translateY(-2px);
+    }
+    .asset-card .preview {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .asset-card .preview img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .asset-card .preview.bg-preview {
+      aspect-ratio: 16/9;
+    }
+    .asset-card .preview.bg-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      image-rendering: auto;
+    }
+    .asset-card .label {
+      font-size: 11px;
+      color: var(--text-dim);
+      word-break: break-all;
+    }
+    .asset-card .name {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .asset-card .meta {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* 大きめプレビュー（背景・UI） */
+    .asset-grid.wide {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+    .asset-grid.narrow {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+
+    /* 画像モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+    .modal-overlay .modal-label {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-light);
+      color: var(--text);
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+    }
+
     /* スクロールバー */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
@@ -873,43 +979,176 @@ gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves))
     <section id="images">
       <h2>アセット一覧</h2>
 
-      <h3>画像アセット</h3>
+      <h3>背景画像</h3>
+      <div class="asset-grid wide">
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview bg-preview"><img src="../assets/images/backgrounds/title_bg.png" alt="title_bg"></div>
+          <div class="name">title_bg.png</div>
+          <div class="label">タイトル画面背景</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview bg-preview"><img src="../assets/images/backgrounds/bg1.webp" alt="bg1"></div>
+          <div class="name">bg1.webp</div>
+          <div class="label">ゲーム画面背景</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview bg-preview"><img src="../assets/images/thumbnail.webp" alt="thumbnail"></div>
+          <div class="name">thumbnail.webp</div>
+          <div class="label">サムネイル画像</div>
+        </div>
+      </div>
 
-      <h4>敵スプライト（10種類）</h4>
-      <table>
-        <tr><th>ファイル</th><th>敵ID</th></tr>
-        <tr><td><code>enemies/bug_small.webp</code></td><td>小型バグ</td></tr>
-        <tr><td><code>enemies/bug_medium.png</code></td><td>中型バグ</td></tr>
-        <tr><td><code>enemies/worm.png</code></td><td>ワーム</td></tr>
-        <tr><td><code>enemies/trojan.png</code></td><td>トロイの木馬</td></tr>
-        <tr><td><code>enemies/ransom.png</code></td><td>ランサムウェア</td></tr>
-        <tr><td><code>enemies/bomber.png</code></td><td>ボマー</td></tr>
-        <tr><td><code>enemies/shield.png</code></td><td>シールド</td></tr>
-        <tr><td><code>enemies/spawner.png</code></td><td>スポナー</td></tr>
-        <tr><td><code>enemies/stealth.png</code></td><td>ステルス</td></tr>
-        <tr><td><code>enemies/dasher.png</code></td><td>ダッシャー</td></tr>
-      </table>
+      <h3>敵スプライト（10種類）</h3>
+      <div class="asset-grid">
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/bug_small.webp" alt="bug_small"></div>
+          <div class="name">bug_small</div>
+          <div class="label">小型バグ</div>
+          <div class="meta">HP:10 / 速度:80 / 報酬:5</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/bug_medium.png" alt="bug_medium"></div>
+          <div class="name">bug_medium</div>
+          <div class="label">中型バグ</div>
+          <div class="meta">HP:25 / 速度:60 / 報酬:15</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/worm.png" alt="worm"></div>
+          <div class="name">worm</div>
+          <div class="label">ワーム</div>
+          <div class="meta">HP:15 / 速度:120 / 報酬:10</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/trojan.png" alt="trojan"></div>
+          <div class="name">trojan</div>
+          <div class="label">トロイの木馬</div>
+          <div class="meta">HP:50 / 速度:40 / 報酬:30</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/ransom.png" alt="ransom"></div>
+          <div class="name">ransom</div>
+          <div class="label">ランサムウェア</div>
+          <div class="meta">HP:80 / 速度:50 / 報酬:50</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/bomber.png" alt="bomber"></div>
+          <div class="name">bomber</div>
+          <div class="label">ボマー</div>
+          <div class="meta">HP:20 / 壁を爆破</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/shield.png" alt="shield"></div>
+          <div class="name">shield</div>
+          <div class="label">シールド</div>
+          <div class="meta">HP:15 / 初撃無効</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/spawner.png" alt="spawner"></div>
+          <div class="name">spawner</div>
+          <div class="label">スポナー</div>
+          <div class="meta">HP:40 / 撃破時分裂</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/stealth.png" alt="stealth"></div>
+          <div class="name">stealth</div>
+          <div class="label">ステルス</div>
+          <div class="meta">HP:12 / 透明化</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/enemies/dasher.png" alt="dasher"></div>
+          <div class="name">dasher</div>
+          <div class="label">ダッシャー</div>
+          <div class="meta">HP:25 / 突進</div>
+        </div>
+      </div>
 
-      <h4>CPU表情（4段階）</h4>
-      <table>
-        <tr><th>ファイル</th><th>HP範囲</th><th>表情</th></tr>
-        <tr><td><code>cpu/cpu_happy.webp</code></td><td>70%以上</td><td>元気</td></tr>
-        <tr><td><code>cpu/cpu_worried.webp</code></td><td>50〜70%</td><td>不安</td></tr>
-        <tr><td><code>cpu/cpu_scared.webp</code></td><td>25〜50%</td><td>怯え</td></tr>
-        <tr><td><code>cpu/cpu_critical.webp</code></td><td>0〜25%</td><td>危機</td></tr>
-      </table>
+      <h3>CPU表情（4段階）</h3>
+      <p>CPUのHP残量に応じて表情が変化：</p>
+      <div class="asset-grid">
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/cpu_happy.png" alt="cpu_happy"></div>
+          <div class="name">cpu_happy</div>
+          <div class="label">HP 70%以上</div>
+          <div class="meta" style="color:var(--green)">元気</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/cpu_worried.png" alt="cpu_worried"></div>
+          <div class="name">cpu_worried</div>
+          <div class="label">HP 50〜70%</div>
+          <div class="meta" style="color:var(--orange)">不安</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/cpu_scared.png" alt="cpu_scared"></div>
+          <div class="name">cpu_scared</div>
+          <div class="label">HP 25〜50%</div>
+          <div class="meta" style="color:var(--fire)">怯え</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/cpu_critical.png" alt="cpu_critical"></div>
+          <div class="name">cpu_critical</div>
+          <div class="label">HP 0〜25%</div>
+          <div class="meta" style="color:var(--red)">危機</div>
+        </div>
+      </div>
 
-      <h4>UIパーツ</h4>
-      <table>
-        <tr><th>ファイル</th><th>用途</th></tr>
-        <tr><td><code>ui/title_logo.png</code></td><td>タイトルロゴ</td></tr>
-        <tr><td><code>ui/btn_start.png</code></td><td>スタートボタン</td></tr>
-        <tr><td><code>ui/btn_retry.png</code></td><td>リトライボタン</td></tr>
-        <tr><td><code>ui/btn_pause.png</code></td><td>ポーズボタン</td></tr>
-        <tr><td><code>ui/arrow_warning.png</code></td><td>敵接近警告矢印</td></tr>
-        <tr><td><code>ui/icon_wall_*.png</code></td><td>壁アイコン各種</td></tr>
-        <tr><td><code>ui/hp_bar_*.png</code></td><td>HPバー素材</td></tr>
-      </table>
+      <h3>UIパーツ</h3>
+      <div class="asset-grid">
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/title_logo.png" alt="title_logo"></div>
+          <div class="name">title_logo</div>
+          <div class="label">タイトルロゴ</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/btn_start.png" alt="btn_start"></div>
+          <div class="name">btn_start</div>
+          <div class="label">スタートボタン</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/btn_retry.png" alt="btn_retry"></div>
+          <div class="name">btn_retry</div>
+          <div class="label">リトライボタン</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/btn_title.png" alt="btn_title"></div>
+          <div class="name">btn_title</div>
+          <div class="label">タイトルへ戻る</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/btn_pause.png" alt="btn_pause"></div>
+          <div class="name">btn_pause</div>
+          <div class="label">ポーズボタン</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/arrow_warning.png" alt="arrow_warning"></div>
+          <div class="name">arrow_warning</div>
+          <div class="label">敵接近警告</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/icon_wall_basic.png" alt="icon_wall_basic"></div>
+          <div class="name">icon_wall_basic</div>
+          <div class="label">基本壁アイコン</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/icon_wall_fire.png" alt="icon_wall_fire"></div>
+          <div class="name">icon_wall_fire</div>
+          <div class="label">炎の壁アイコン</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/icon_wall_ice.png" alt="icon_wall_ice"></div>
+          <div class="name">icon_wall_ice</div>
+          <div class="label">氷の壁アイコン</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/hp_bar_bg.png" alt="hp_bar_bg"></div>
+          <div class="name">hp_bar_bg</div>
+          <div class="label">HPバー背景</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/ui/hp_bar_fill.png" alt="hp_bar_fill"></div>
+          <div class="name">hp_bar_fill</div>
+          <div class="label">HPバー充填</div>
+        </div>
+      </div>
     </section>
 
     <section id="sfx">
@@ -992,7 +1231,32 @@ gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves))
   </main>
 </div>
 
+<!-- 画像モーダル -->
+<div class="modal-overlay" id="imageModal" onclick="hideModal()">
+  <img id="modalImg" src="" alt="">
+  <div class="modal-label" id="modalLabel"></div>
+</div>
+
 <script>
+  // 画像モーダル
+  function showModal(card) {
+    const img = card.querySelector('.preview img');
+    const name = card.querySelector('.name');
+    const label = card.querySelector('.label');
+    if (!img) return;
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImg');
+    const modalLabel = document.getElementById('modalLabel');
+    modalImg.src = img.src;
+    modalImg.style.imageRendering = img.closest('.bg-preview') ? 'auto' : 'pixelated';
+    modalLabel.textContent = (name ? name.textContent : '') + (label ? ' — ' + label.textContent : '');
+    modal.classList.add('show');
+  }
+  function hideModal() {
+    document.getElementById('imageModal').classList.remove('show');
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
+
   // サイドバーのアクティブ状態を管理
   const links = document.querySelectorAll('.sidebar a');
   const sections = document.querySelectorAll('section');
