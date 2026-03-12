@@ -15,7 +15,8 @@ class SaveManager {
       hard: { clearedStages: [], highScores: {} },
       coins: 0,
       unlockedWalls: ["basic"],
-      upgrades: { wall_duration: 0, wall_damage: 0, wall_count: 0, cpu_hp: 0 }
+      upgrades: { wall_duration: 0, wall_damage: 0, wall_count: 0, cpu_hp: 0 },
+      selectedCharacter: 'standard'
     };
   }
 
@@ -53,7 +54,8 @@ class SaveManager {
         hard: { clearedStages: [], highScores: {} },
         coins: data.coins || 0,
         unlockedWalls: data.unlockedWalls || ["basic"],
-        upgrades: data.upgrades || defaultSave.upgrades
+        upgrades: data.upgrades || defaultSave.upgrades,
+        selectedCharacter: data.selectedCharacter || 'standard'
       };
     }
 
@@ -63,7 +65,8 @@ class SaveManager {
       hard: data.hard || defaultSave.hard,
       coins: data.coins ?? 0,
       unlockedWalls: data.unlockedWalls || ["basic"],
-      upgrades: data.upgrades || defaultSave.upgrades
+      upgrades: data.upgrades || defaultSave.upgrades,
+      selectedCharacter: data.selectedCharacter || 'standard'
     };
   }
 
@@ -185,6 +188,23 @@ class SaveManager {
   static getCoins() {
     const data = this.load();
     return data.coins;
+  }
+
+  /**
+   * 選択中のキャラクターIDを取得
+   */
+  static getSelectedCharacter() {
+    const data = this.load();
+    return data.selectedCharacter || 'standard';
+  }
+
+  /**
+   * キャラクターを選択して保存
+   */
+  static setSelectedCharacter(characterId) {
+    const data = this.load();
+    data.selectedCharacter = characterId;
+    this.save(data);
   }
 }
 

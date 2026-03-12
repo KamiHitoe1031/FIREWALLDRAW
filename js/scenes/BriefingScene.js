@@ -75,9 +75,20 @@ class BriefingScene extends Phaser.Scene {
     const waveCount = this.stageData.waves ? this.stageData.waves.length : 0;
     const reward = this.stageData.reward || 0;
 
-    this.add.text(130, infoY + 20, `CPU HP: ${cpuHp}`, {
+    // キャラクター補正を反映したHP表示
+    const charId = SaveManager.getSelectedCharacter();
+    const charData = CHARACTER_DATA[charId] || CHARACTER_DATA.standard;
+    const saveData = SaveManager.load();
+    const cpuUpgrade = saveData.upgrades?.cpu_hp || 0;
+    let displayHp = cpuHp + (cpuUpgrade * 2) + charData.modifiers.cpuHp;
+    if (this.difficulty === 'hard') displayHp = Math.max(1, displayHp - 2);
+    else displayHp = Math.max(1, displayHp);
+
+    this.cpuHpText = this.add.text(130, infoY + 20, `CPU HP: ${displayHp}`, {
       fontSize: '13px', color: '#44ff44', fontFamily: 'sans-serif'
     }).setOrigin(0.5);
+    this.baseCpuHp = cpuHp;
+
     this.add.text(WIDTH / 2, infoY + 20, `WAVE: ${waveCount}`, {
       fontSize: '13px', color: '#44aaff', fontFamily: 'sans-serif'
     }).setOrigin(0.5);
@@ -86,6 +97,9 @@ class BriefingScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     contentY = infoY + 52;
+
+    // --- キャラクター選択 ---
+    contentY = this.createCharacterSelector(contentY);
 
     // --- 出現する敵一覧 ---
     // ステージのウェーブから敵IDを抽出
@@ -99,8 +113,8 @@ class BriefingScene extends Phaser.Scene {
 
     // 敵カード表示
     const cardWidth = (WIDTH - 120) / 2;
-    const cardHeight = 60;
-    const cardGap = 8;
+    const cardHeight = 52;
+    const cardGap = 6;
 
     uniqueEnemies.forEach((enemy, index) => {
       const col = index % 2;
@@ -299,6 +313,139 @@ class BriefingScene extends Phaser.Scene {
     }
 
     return tips;
+  }
+
+  // === キャラクター選択 ===
+
+  createCharacterSelector(y) {
+    const { WIDTH } = GAME_CONFIG;
+    const characters = Object.values(CHARACTER_DATA);
+    const selectedId = SaveManager.getSelectedCharacter();
+
+    // セクションラベル
+    this.add.text(60, y, 'キャラクター選択', {
+      fontSize: '12px', color: '#8899aa', fontFamily: 'sans-serif'
+    });
+    y += 16;
+
+    // キャラカード配置
+    const cardWidth = 130;
+    const cardHeight = 50;
+    const gap = 6;
+    const totalWidth = characters.length * cardWidth + (characters.length - 1) * gap;
+    const startX = (WIDTH - totalWidth) / 2;
+
+    this.charCards = [];
+
+    characters.forEach((char, index) => {
+      const cx = startX + index * (cardWidth + gap) + cardWidth / 2;
+      const cy = y + cardHeight / 2;
+
+      const card = this.createCharCard(cx, cy, cardWidth, cardHeight, char, char.id === selectedId);
+      this.charCards.push(card);
+    });
+
+    return y + cardHeight + 8;
+  }
+
+  createCharCard(x, y, w, h, charData, isSelected) {
+    const container = this.add.container(x, y);
+
+    // 背景
+    const bg = this.add.graphics();
+    this.drawCharCardBg(bg, w, h, charData.color, isSelected);
+
+    // キャラ名
+    const name = this.add.text(0, -h / 2 + 12, charData.name, {
+      fontSize: '11px',
+      color: isSelected ? '#ffffff' : '#aabbcc',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // ステータス修正テキスト
+    const modText = this.getModifierText(charData.modifiers);
+    const modLabel = this.add.text(0, h / 2 - 12, modText, {
+      fontSize: '9px',
+      color: '#aaddcc',
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+
+    container.add([bg, name, modLabel]);
+    container.setSize(w, h);
+    container.setInteractive({ useHandCursor: true });
+
+    container.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
+      this.selectCharacter(charData.id);
+    });
+
+    container.on('pointerover', () => {
+      if (SaveManager.getSelectedCharacter() !== charData.id) {
+        name.setColor('#ffffff');
+      }
+    });
+
+    container.on('pointerout', () => {
+      if (SaveManager.getSelectedCharacter() !== charData.id) {
+        name.setColor('#aabbcc');
+      }
+    });
+
+    container.charData = charData;
+    container.bg = bg;
+    container.nameText = name;
+    container.cardW = w;
+    container.cardH = h;
+
+    return container;
+  }
+
+  drawCharCardBg(bg, w, h, color, isSelected) {
+    bg.clear();
+    if (isSelected) {
+      bg.fillStyle(color, 0.6);
+      bg.lineStyle(2, 0xffffff, 1);
+    } else {
+      bg.fillStyle(0x222233, 0.5);
+      bg.lineStyle(1, 0x445566, 0.5);
+    }
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
+  }
+
+  getModifierText(mods) {
+    const parts = [];
+    if (mods.maxWalls !== 0) parts.push(`壁${mods.maxWalls > 0 ? '+' : ''}${mods.maxWalls}`);
+    if (mods.wallDuration !== 0) parts.push(`持続${mods.wallDuration > 0 ? '+' : ''}${mods.wallDuration / 1000}秒`);
+    if (mods.cpuHp !== 0) parts.push(`HP${mods.cpuHp > 0 ? '+' : ''}${mods.cpuHp}`);
+    if (mods.wallDamageMultiplier !== 0) parts.push(`ダメx${(1 + mods.wallDamageMultiplier).toFixed(1)}`);
+    return parts.length === 0 ? 'バランス型' : parts.join(' / ');
+  }
+
+  selectCharacter(charId) {
+    SaveManager.setSelectedCharacter(charId);
+
+    // カードのビジュアル更新
+    this.charCards.forEach(card => {
+      const isSelected = card.charData.id === charId;
+      this.drawCharCardBg(card.bg, card.cardW, card.cardH, card.charData.color, isSelected);
+      card.nameText.setColor(isSelected ? '#ffffff' : '#aabbcc');
+    });
+
+    // CPU HP表示を更新
+    this.updateCpuHpDisplay(charId);
+  }
+
+  updateCpuHpDisplay(charId) {
+    if (!this.cpuHpText || !this.baseCpuHp) return;
+    const charData = CHARACTER_DATA[charId] || CHARACTER_DATA.standard;
+    const saveData = SaveManager.load();
+    const cpuUpgrade = saveData.upgrades?.cpu_hp || 0;
+    let displayHp = this.baseCpuHp + (cpuUpgrade * 2) + charData.modifiers.cpuHp;
+    if (this.difficulty === 'hard') displayHp = Math.max(1, displayHp - 2);
+    else displayHp = Math.max(1, displayHp);
+    this.cpuHpText.setText(`CPU HP: ${displayHp}`);
   }
 
   createStartButton(x, y) {

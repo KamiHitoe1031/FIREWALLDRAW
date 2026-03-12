@@ -192,7 +192,7 @@ class UIScene extends Phaser.Scene {
     bg.fillRect(0, 0, WIDTH, HEIGHT);
 
     // PAUSEテキスト
-    const pauseText = this.add.text(WIDTH / 2, HEIGHT / 2 - 80, 'PAUSE', {
+    const pauseText = this.add.text(WIDTH / 2, HEIGHT / 2 - 110, 'PAUSE', {
       fontSize: '48px',
       color: '#ffffff',
       fontFamily: 'sans-serif',
@@ -201,11 +201,14 @@ class UIScene extends Phaser.Scene {
 
     this.pauseOverlay.add([bg, pauseText]);
 
+    // 音量調整
+    this.createVolumeControls(WIDTH / 2, HEIGHT / 2 - 50);
+
     // 再開ボタン
-    this.createPauseButton2(WIDTH / 2, HEIGHT / 2, '再開', 0x00aa00, () => this.togglePause());
+    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 10, '再開', 0x00aa00, () => this.togglePause());
 
     // リトライボタン
-    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 55, 'リトライ', 0x444466, () => {
+    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 65, 'リトライ', 0x444466, () => {
       this.hidePauseOverlay();
       this.scene.stop('GameScene');
       this.scene.stop('UIScene');
@@ -220,11 +223,109 @@ class UIScene extends Phaser.Scene {
     });
 
     // タイトルへボタン
-    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 110, 'タイトルへ', 0x666666, () => {
+    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 120, 'タイトルへ', 0x666666, () => {
       this.scene.stop('GameScene');
       this.scene.stop('UIScene');
       this.scene.start('TitleScene');
     });
+  }
+
+  createVolumeControls(centerX, y) {
+    // ラベル
+    const label = this.add.text(centerX, y - 18, '音量', {
+      fontSize: '13px',
+      color: '#aaaaaa',
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+    this.pauseOverlay.add(label);
+
+    // 5段階ボタン
+    const levels = [
+      { label: '0%', value: 0 },
+      { label: '25%', value: 0.25 },
+      { label: '50%', value: 0.5 },
+      { label: '75%', value: 0.75 },
+      { label: '100%', value: 1.0 }
+    ];
+
+    const btnWidth = 52;
+    const btnHeight = 28;
+    const gap = 6;
+    const totalWidth = levels.length * btnWidth + (levels.length - 1) * gap;
+    const startX = centerX - totalWidth / 2;
+
+    this.volumeButtons = [];
+
+    levels.forEach((level, index) => {
+      const bx = startX + index * (btnWidth + gap) + btnWidth / 2;
+      const container = this.add.container(bx, y);
+
+      const bg = this.add.graphics();
+      const text = this.add.text(0, 0, level.label, {
+        fontSize: '11px',
+        color: '#ffffff',
+        fontFamily: 'sans-serif',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      container.add([bg, text]);
+      container.setSize(btnWidth, btnHeight);
+      container.setInteractive({ useHandCursor: true });
+
+      container.on('pointerdown', () => {
+        this.soundManager.play('sfx_button_click');
+        this.setGameVolume(level.value);
+      });
+
+      container.on('pointerover', () => {
+        text.setColor('#ffff00');
+      });
+
+      container.on('pointerout', () => {
+        const isActive = Math.abs(this.soundManager.volume - level.value) < 0.05;
+        text.setColor(isActive ? '#ffffff' : '#aaaaaa');
+      });
+
+      this.pauseOverlay.add(container);
+      this.volumeButtons.push({ container, bg, text, value: level.value });
+    });
+
+    // 初期描画
+    this.updateVolumeButtonStyles();
+  }
+
+  updateVolumeButtonStyles() {
+    if (!this.volumeButtons) return;
+    const currentVol = this.soundManager.volume;
+
+    this.volumeButtons.forEach(btn => {
+      const isActive = Math.abs(currentVol - btn.value) < 0.05;
+      const btnWidth = 52;
+      const btnHeight = 28;
+
+      btn.bg.clear();
+      if (isActive) {
+        btn.bg.fillStyle(0x00aaff, 0.9);
+        btn.bg.lineStyle(2, 0xffffff, 1);
+      } else {
+        btn.bg.fillStyle(0x333344, 0.8);
+        btn.bg.lineStyle(1, 0x556677, 0.6);
+      }
+      btn.bg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 5);
+      btn.bg.strokeRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 5);
+      btn.text.setColor(isActive ? '#ffffff' : '#aaaaaa');
+    });
+  }
+
+  setGameVolume(vol) {
+    // UIScene側
+    this.soundManager.setVolume(vol);
+    // GameScene側も同期
+    const gameScene = this.scene.get('GameScene');
+    if (gameScene && gameScene.soundManager) {
+      gameScene.soundManager.setVolume(vol);
+    }
+    this.updateVolumeButtonStyles();
   }
 
   createPauseButton2(x, y, label, color, onClick) {
@@ -277,6 +378,7 @@ class UIScene extends Phaser.Scene {
       this.pauseOverlay.destroy();
       this.pauseOverlay = null;
     }
+    this.volumeButtons = null;
   }
 
   createBottomUI() {

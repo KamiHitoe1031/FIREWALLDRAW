@@ -24,6 +24,72 @@ const DIFFICULTY_SETTINGS = {
 
 window.DIFFICULTY_SETTINGS = DIFFICULTY_SETTINGS;
 
+// キャラクターデータ
+const CHARACTER_DATA = {
+  standard: {
+    id: 'standard',
+    name: 'スタンダード',
+    description: 'バランス型。すべてのステータスが標準値。',
+    color: 0x00aaff,
+    modifiers: {
+      maxWalls: 0,
+      wallDuration: 0,
+      cpuHp: 0,
+      wallDamageMultiplier: 0
+    }
+  },
+  fortress: {
+    id: 'fortress',
+    name: 'フォートレス',
+    description: 'CPU HP +3、壁持続 -1秒。耐久型。',
+    color: 0x4466aa,
+    modifiers: {
+      maxWalls: 0,
+      wallDuration: -1000,
+      cpuHp: 3,
+      wallDamageMultiplier: 0
+    }
+  },
+  multicore: {
+    id: 'multicore',
+    name: 'マルチコア',
+    description: '同時壁 +1、CPU HP -2。壁攻勢型。',
+    color: 0x44cc44,
+    modifiers: {
+      maxWalls: 1,
+      wallDuration: 0,
+      cpuHp: -2,
+      wallDamageMultiplier: 0
+    }
+  },
+  chrono: {
+    id: 'chrono',
+    name: 'クロノ',
+    description: '壁持続 +2.5秒、同時壁 -1。持久型。',
+    color: 0xaa44ff,
+    modifiers: {
+      maxWalls: -1,
+      wallDuration: 2500,
+      cpuHp: 0,
+      wallDamageMultiplier: 0
+    }
+  },
+  striker: {
+    id: 'striker',
+    name: 'ストライカー',
+    description: '壁ダメ ×1.4、CPU HP -2。攻撃型。',
+    color: 0xff4444,
+    modifiers: {
+      maxWalls: 0,
+      wallDuration: 0,
+      cpuHp: -2,
+      wallDamageMultiplier: 0.4
+    }
+  }
+};
+
+window.CHARACTER_DATA = CHARACTER_DATA;
+
 const DEFAULT_DATA = {
   enemies: [
     {

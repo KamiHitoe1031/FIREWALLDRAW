@@ -12,7 +12,7 @@ class SoundManager {
     this.sounds = {};
     this.lastPlayTime = {};
     this.minInterval = 50; // 同じSEの最小再生間隔(ms)
-    this.volume = parseFloat(localStorage.getItem('sfx_volume') || '0.7');
+    this.volume = parseFloat(localStorage.getItem('sfx_volume') || '0.5');
     this.muted = localStorage.getItem('sfx_muted') === 'true';
 
     // Phaserのサウンドマネージャーにミュート状態を反映

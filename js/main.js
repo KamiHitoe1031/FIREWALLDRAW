@@ -25,6 +25,7 @@ const GameData = {
   cpuHp: 10,
   cpuMaxHp: 10,
   selectedWallType: 'basic',
+  selectedCharacter: 'standard',
   unlockedWalls: ['basic'],
   availableWalls: ['basic'],
 
@@ -43,9 +44,10 @@ const GameData = {
   },
 
   load() {
-    // SaveManagerからアップグレードを読み込み
+    // SaveManagerからアップグレード・キャラクター選択を読み込み
     const data = SaveManager.load();
     this.upgrades = data.upgrades;
+    this.selectedCharacter = data.selectedCharacter || 'standard';
   },
 
   reset() {

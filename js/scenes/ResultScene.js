@@ -464,12 +464,29 @@ class ResultScene extends Phaser.Scene {
   }
 
   /**
-   * CPUキャラクターを表示
+   * CPUキャラクターを表示（選択中キャラクターの画像を優先）
    */
   showCpuCharacter(textureKey, x, y, scale) {
-    if (this.textures.exists(textureKey)) {
-      const sprite = this.add.image(x, y, textureKey);
+    const charId = SaveManager.getSelectedCharacter();
+    const expression = textureKey.replace('cpu_', '');
+    const expressionFrames = { happy: 0, worried: 1, scared: 2, critical: 3 };
+    const sheetKey = `char_${charId}`;
+
+    let sprite = null;
+
+    if (this.textures.exists(sheetKey)) {
+      // スプライトシート版
+      const frame = expressionFrames[expression] ?? 0;
+      sprite = this.add.sprite(x, y, sheetKey, frame);
+      // 250pxフレームにscaleを適用（スプライトシート: 512x512, 表示領域250x250）
       sprite.setScale(scale);
+    } else if (this.textures.exists(textureKey)) {
+      // 個別画像フォールバック
+      sprite = this.add.image(x, y, textureKey);
+      sprite.setScale(scale);
+    }
+
+    if (sprite) {
       // ゆるいボブアニメーション
       this.tweens.add({
         targets: sprite,
@@ -479,9 +496,8 @@ class ResultScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.easeInOut'
       });
-      return sprite;
     }
-    return null;
+    return sprite;
   }
 
   /**

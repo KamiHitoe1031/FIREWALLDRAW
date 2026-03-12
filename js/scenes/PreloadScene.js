@@ -67,11 +67,24 @@ class PreloadScene extends Phaser.Scene {
       frameHeight: 32
     });
 
-    // CPU（HP状態別の個別画像）
+    // CPU（HP状態別の個別画像 - 汎用フォールバック）
     this.load.image('cpu_happy', 'assets/images/cpu/cpu_happy.webp');
     this.load.image('cpu_worried', 'assets/images/cpu/cpu_worried.webp');
     this.load.image('cpu_scared', 'assets/images/cpu/cpu_scared.webp');
     this.load.image('cpu_critical', 'assets/images/cpu/cpu_critical.webp');
+
+    // キャラクター別CPU画像（2×2グリッドスプライトシート: 512x512）
+    // 各セル256x256のうち表示領域250x250（margin:3, spacing:6でトリミング）
+    // 配置: 左上=happy, 右上=worried, 左下=scared, 右下=critical
+    const characterIds = ['standard', 'fortress', 'multicore', 'chrono', 'striker'];
+    characterIds.forEach(charId => {
+      this.load.spritesheet(`char_${charId}`, `assets/images/cpu/${charId}_sheet.webp`, {
+        frameWidth: 250,
+        frameHeight: 250,
+        margin: 3,
+        spacing: 6
+      });
+    });
 
     // UI
     this.load.image('hp_bar_bg', 'assets/images/ui/hp_bar_bg.png');

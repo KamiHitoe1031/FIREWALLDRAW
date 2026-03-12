@@ -20,18 +20,24 @@ class GameScene extends Phaser.Scene {
     const saveData = SaveManager.load();
     const upgrades = saveData.upgrades || { wall_duration: 0, wall_damage: 0, wall_count: 0, cpu_hp: 0 };
 
-    // 壁関連
+    // キャラクター補正
+    this.selectedCharacterId = SaveManager.getSelectedCharacter();
+    const characterData = CHARACTER_DATA[this.selectedCharacterId] || CHARACTER_DATA.standard;
+    const charMods = characterData.modifiers;
+
+    // 壁関連（キャラクター補正込み）
     this.walls = [];
     this.currentLine = [];
     this.isDrawing = false;
     this.lastDrawTime = 0;
     this.drawCooldown = 500;
-    this.maxWalls = 3 + upgrades.wall_count;
-    this.wallDuration = 5000 + (upgrades.wall_duration * 1000);
+    this.maxWalls = Math.max(1, 3 + upgrades.wall_count + charMods.maxWalls);
+    this.wallDuration = Math.max(2000, 5000 + (upgrades.wall_duration * 1000) + charMods.wallDuration);
     this.wallMinLength = 50;
     this.wallMaxLength = this.difficultySettings.wallMaxLength;
     this.wallThickness = 16;
-    this.wallDamageMultiplier = 1 + (upgrades.wall_damage * 0.2);
+    this.wallDamageMultiplier = 1 + (upgrades.wall_damage * 0.2) + charMods.wallDamageMultiplier;
+    this.characterCpuHpModifier = charMods.cpuHp;
 
     // 敵関連
     this.enemies = [];
@@ -92,14 +98,16 @@ class GameScene extends Phaser.Scene {
       this.currentStageData = this.stagesData.find(s => s.id === this.stageId) || this.stagesData[0];
       console.log('[GameScene] 現在のステージ:', this.currentStageData ? this.currentStageData.name : 'なし');
 
-    // CPU HP設定（ステージ基本値 + アップグレード）
-    const saveData = SaveManager.load();
-    const cpuUpgrade = saveData.upgrades?.cpu_hp || 0;
-    this.cpuMaxHp = this.currentStageData.cpuHp + (cpuUpgrade * 2);
+    // CPU HP設定（ステージ基本値 + アップグレード + キャラクター補正）
+    const cpuSaveData = SaveManager.load();
+    const cpuUpgrade = cpuSaveData.upgrades?.cpu_hp || 0;
+    this.cpuMaxHp = this.currentStageData.cpuHp + (cpuUpgrade * 2) + this.characterCpuHpModifier;
 
     // ハードモードではCPU HP減少
     if (this.difficulty === 'hard') {
       this.cpuMaxHp = Math.max(1, this.cpuMaxHp - 2);
+    } else {
+      this.cpuMaxHp = Math.max(1, this.cpuMaxHp);
     }
 
     this.cpuHp = this.cpuMaxHp;
@@ -195,15 +203,28 @@ class GameScene extends Phaser.Scene {
 
   createCPU() {
     const { CPU_X, CPU_Y } = GAME_CONFIG;
+    const charId = this.selectedCharacterId || 'standard';
 
-    // CPU画像が存在するかチェック
-    this.useCpuImages = this.textures.exists('cpu_happy');
+    // 表情フレーム: 2×2グリッド（左上=happy, 右上=worried, 左下=scared, 右下=critical）
+    this.cpuExpressionFrames = { happy: 0, worried: 1, scared: 2, critical: 3 };
+
+    // キャラクタースプライトシート → 汎用個別画像 → プレースホルダーのフォールバック
+    const sheetKey = `char_${charId}`;
+    this.cpuUseSheet = this.textures.exists(sheetKey);
+    this.cpuUseFallbackImages = !this.cpuUseSheet && this.textures.exists('cpu_happy');
+    this.useCpuImages = this.cpuUseSheet || this.cpuUseFallbackImages;
+    this.cpuSheetKey = sheetKey;
 
     // CPUコンテナ
     this.cpuContainer = this.add.container(CPU_X, CPU_Y);
 
-    if (this.useCpuImages) {
-      // 画像版CPU
+    if (this.cpuUseSheet) {
+      // スプライトシート版CPU（フレーム0 = happy）
+      this.cpuSprite = this.add.sprite(0, 0, sheetKey, 0);
+      this.cpuSprite.setDisplaySize(128, 128);
+      this.cpuContainer.add(this.cpuSprite);
+    } else if (this.cpuUseFallbackImages) {
+      // 個別画像フォールバック版CPU
       this.cpuSprite = this.add.image(0, 0, 'cpu_happy');
       this.cpuSprite.setDisplaySize(128, 128);
       this.cpuContainer.add(this.cpuSprite);
@@ -241,15 +262,25 @@ class GameScene extends Phaser.Scene {
     const ratio = this.cpuHp / this.cpuMaxHp;
 
     if (this.useCpuImages && this.cpuSprite) {
-      // 画像版: HP状態に応じたテクスチャ切り替え
-      let textureKey = 'cpu_happy';
-      if (ratio <= 0.25) textureKey = 'cpu_critical';
-      else if (ratio <= 0.5) textureKey = 'cpu_scared';
-      else if (ratio <= 0.75) textureKey = 'cpu_worried';
+      // HP状態に応じた表情を決定
+      let expression = 'happy';
+      if (ratio <= 0.25) expression = 'critical';
+      else if (ratio <= 0.5) expression = 'scared';
+      else if (ratio <= 0.75) expression = 'worried';
 
-      if (this.cpuSprite.texture.key !== textureKey) {
-        this.cpuSprite.setTexture(textureKey);
-        this.cpuSprite.setDisplaySize(128, 128);
+      if (this.cpuUseSheet) {
+        // スプライトシート版: フレーム切り替え
+        const frame = this.cpuExpressionFrames[expression];
+        if (this.cpuSprite.frame.name !== frame) {
+          this.cpuSprite.setFrame(frame);
+        }
+      } else {
+        // 個別画像フォールバック版: テクスチャ切り替え
+        const textureKey = `cpu_${expression}`;
+        if (this.cpuSprite.texture.key !== textureKey && this.textures.exists(textureKey)) {
+          this.cpuSprite.setTexture(textureKey);
+          this.cpuSprite.setDisplaySize(128, 128);
+        }
       }
     } else if (this.cpuFace) {
       // プレースホルダー版: 顔文字切り替え
