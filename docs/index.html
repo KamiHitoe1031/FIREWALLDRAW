@@ -466,6 +466,7 @@
     <a href="#ui-scene">UIScene</a>
 
     <div class="section-title">データ</div>
+    <a href="#characters">キャラクター</a>
     <a href="#enemies">敵データ</a>
     <a href="#walls">壁データ</a>
     <a href="#stages">ステージデータ</a>
@@ -569,7 +570,7 @@
 │   ├── <span class="dir">images/</span>
 │   │   ├── <span class="dir">backgrounds/</span>        <span class="comment">← 背景画像</span>
 │   │   ├── <span class="dir">enemies/</span>            <span class="comment">← 敵スプライト（10種）</span>
-│   │   ├── <span class="dir">cpu/</span>                <span class="comment">← CPU表情（4段階）</span>
+│   │   ├── <span class="dir">cpu/</span>                <span class="comment">← CPUキャラ（5種×4表情シート + 汎用4種）</span>
 │   │   └── <span class="dir">ui/</span>                 <span class="comment">← UIパーツ</span>
 │   ├── <span class="dir">audio/</span>
 │   │   ├── <span class="dir">bgm/</span>                <span class="comment">← BGM（未実装）</span>
@@ -602,7 +603,7 @@
       <h4>データ</h4>
       <table>
         <tr><th>ファイル</th><th>役割</th></tr>
-        <tr><td><code>DefaultData.js</code></td><td>難易度設定・敵10種・壁5種・ステージ10個・アップグレード4種のフォールバック</td></tr>
+        <tr><td><code>DefaultData.js</code></td><td>難易度設定・キャラクター5種・敵10種・壁5種・ステージ10個・アップグレード4種のフォールバック</td></tr>
         <tr><td><code>enemies.json</code></td><td>敵パラメータ定義（HP、速度、報酬、特殊能力）</td></tr>
         <tr><td><code>walls.json</code></td><td>壁パラメータ定義（ダメージ、色、解放条件）</td></tr>
         <tr><td><code>stages.json</code></td><td>ステージ定義（ウェーブ構成、敵出現パターン）</td></tr>
@@ -798,7 +799,7 @@ GET  /rankings  → トップ20取得</code></pre>
         <tr><td>2</td><td><code>PreloadScene</code></td><td>全アセット読み込み + エラー記録</td><td>→ Title</td></tr>
         <tr><td>3</td><td><code>TitleScene</code></td><td>タイトル画面・難易度選択</td><td>→ StageSelect / Help / Data</td></tr>
         <tr><td>4</td><td><code>StageSelectScene</code></td><td>ステージ選択（2x5グリッド）</td><td>→ Briefing</td></tr>
-        <tr><td>5</td><td><code>BriefingScene</code></td><td>ステージ開始前の敵情報表示</td><td>→ GameScene</td></tr>
+        <tr><td>5</td><td><code>BriefingScene</code></td><td>敵情報表示 + キャラ選択 + コインアンロック</td><td>→ GameScene</td></tr>
         <tr><td>6</td><td><code>GameScene</code></td><td>メインゲームロジック</td><td>→ Result</td></tr>
         <tr><td>7</td><td><code>UIScene</code></td><td>HUD層（GameSceneと並列）</td><td>-</td></tr>
         <tr><td>8</td><td><code>ResultScene</code></td><td>クリア/ゲームオーバー結果</td><td>→ Ranking / Title</td></tr>
@@ -812,11 +813,12 @@ GET  /rankings  → トップ20取得</code></pre>
       <h3>GameScene（メインゲームロジック）</h3>
 
       <h4>初期化</h4>
-      <pre><code>// シーン間データ受け取り + アップグレード反映
-this.maxWalls = 3 + upgrades.wall_count;
-this.wallDuration = base + (upgrades.wall_duration * bonus);
-this.wallDamageMultiplier = 1.0 + (upgrades.wall_damage * 0.1);
-this.cpuMaxHp = stageData.cpuHp + (upgrades.cpu_hp * 2);</code></pre>
+      <pre><code>// シーン間データ受け取り + アップグレード + キャラクター補正反映
+const charMods = CHARACTER_DATA[charId].modifiers;
+this.maxWalls = Math.max(1, 3 + upgrades.wall_count + charMods.maxWalls);
+this.wallDuration = Math.max(2000, 5000 + (upgrades.wall_duration * 1000) + charMods.wallDuration);
+this.wallDamageMultiplier = 1 + (upgrades.wall_damage * 0.2) + charMods.wallDamageMultiplier;
+this.cpuMaxHp = stageData.cpuHp + (upgrades.cpu_hp * 2) + charMods.cpuHp;</code></pre>
 
       <h4>壁描画システム</h4>
       <pre><code>マウスダウン → ドラッグ開始地点記録
@@ -846,17 +848,46 @@ gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves))
       <table>
         <tr><th>要素</th><th>位置</th><th>内容</th></tr>
         <tr><td>HPバー</td><td>上部左</td><td>CPU残りHP（色変化あり）</td></tr>
-        <tr><td>スコア</td><td>上部右</td><td>現在スコア</td></tr>
-        <tr><td>ウェーブ</td><td>上部中央</td><td>Wave 2/5 形式</td></tr>
-        <tr><td>ポーズ</td><td>右上</td><td>ポーズボタン</td></tr>
+        <tr><td>スコア</td><td>上部中央</td><td>現在スコア</td></tr>
+        <tr><td>ウェーブ</td><td>上部右寄り</td><td>Wave 2/5 形式</td></tr>
+        <tr><td>ミュート</td><td>右上</td><td>S/M 切り替えボタン</td></tr>
+        <tr><td>ポーズ</td><td>右上</td><td>ポーズボタン → 音量調整（5段階）+ 再開/リトライ/タイトルへ</td></tr>
         <tr><td>壁選択</td><td>下部</td><td>解放済み壁タイプ切り替え</td></tr>
       </table>
     </section>
 
     <!-- ===== データ ===== -->
-    <section id="enemies">
+    <section id="characters">
       <h2>ゲームデータ</h2>
 
+      <h3>キャラクター（5種類）</h3>
+      <p>ステージ開始前のブリーフィング画面で選択可能。スタンダード以外はコインで解放。</p>
+
+      <table>
+        <tr><th>ID</th><th>名前</th><th>タイプ</th><th>壁数</th><th>壁持続</th><th>CPU HP</th><th>壁ダメ</th><th>コスト</th></tr>
+        <tr><td><code>standard</code></td><td>スタンダード</td><td>バランス型</td><td>±0</td><td>±0</td><td>±0</td><td>±0</td><td>無料</td></tr>
+        <tr><td><code>fortress</code></td><td>フォートレス</td><td>耐久型</td><td>±0</td><td>-1秒</td><td>+3</td><td>±0</td><td>200</td></tr>
+        <tr><td><code>multicore</code></td><td>マルチコア</td><td>壁攻勢型</td><td>+1</td><td>±0</td><td>-2</td><td>±0</td><td>300</td></tr>
+        <tr><td><code>chrono</code></td><td>クロノ</td><td>持久型</td><td>-1</td><td>+2.5秒</td><td>±0</td><td>±0</td><td>400</td></tr>
+        <tr><td><code>striker</code></td><td>ストライカー</td><td>攻撃型</td><td>±0</td><td>±0</td><td>-2</td><td>x1.4</td><td>500</td></tr>
+      </table>
+
+      <h4>キャラクター画像</h4>
+      <p>各キャラクターは512×512pxの2×2グリッドスプライトシートで管理。各セル256×256pxのうち中央250×250pxを表示領域として使用。</p>
+      <table>
+        <tr><th>フレーム</th><th>位置</th><th>表情</th><th>HP条件</th></tr>
+        <tr><td>0</td><td>左上</td><td>happy</td><td>70%以上</td></tr>
+        <tr><td>1</td><td>右上</td><td>worried</td><td>50〜70%</td></tr>
+        <tr><td>2</td><td>左下</td><td>scared</td><td>25〜50%</td></tr>
+        <tr><td>3</td><td>右下</td><td>critical</td><td>0〜25%</td></tr>
+      </table>
+
+      <div class="info-box tip">
+        <strong>フォールバック</strong>: キャラスプライトシート未配置の場合 → 汎用cpu_*画像 → Graphicsプレースホルダー（3段階）
+      </div>
+    </section>
+
+    <section id="enemies">
       <h3>敵データ（10種類）</h3>
 
       <h4>基本敵（Phase 1）</h4>
@@ -965,10 +996,12 @@ gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves))
   },
   coins: 2500,
   unlockedWalls: ["basic", "fire"],
+  unlockedCharacters: ["standard", "fortress"],
   upgrades: {
     wall_duration: 2, wall_damage: 1,
     wall_count: 1, cpu_hp: 2
-  }
+  },
+  selectedCharacter: "fortress"
 }</code></pre>
       <div class="info-box">
         <strong>復活の呪文</strong>: セーブデータを Base64 エンコードした文字列。テキストとして共有・復元可能。
@@ -1062,29 +1095,64 @@ gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves))
         </div>
       </div>
 
-      <h3>CPU表情（4段階）</h3>
-      <p>CPUのHP残量に応じて表情が変化：</p>
+      <h3>CPUキャラクター スプライトシート（5種）</h3>
+      <p>各キャラクター別の2×2グリッドスプライトシート（512×512, 表示領域250×250/セル）：</p>
       <div class="asset-grid">
         <div class="asset-card" onclick="showModal(this)">
-          <div class="preview"><img src="../assets/images/cpu/cpu_happy.png" alt="cpu_happy"></div>
+          <div class="preview"><img src="../assets/images/cpu/standard_sheet.webp" alt="standard_sheet"></div>
+          <div class="name">standard_sheet</div>
+          <div class="label">スタンダード</div>
+          <div class="meta" style="color:#00aaff">バランス型</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/fortress_sheet.webp" alt="fortress_sheet"></div>
+          <div class="name">fortress_sheet</div>
+          <div class="label">フォートレス</div>
+          <div class="meta" style="color:#4466aa">耐久型</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/multicore_sheet.webp" alt="multicore_sheet"></div>
+          <div class="name">multicore_sheet</div>
+          <div class="label">マルチコア</div>
+          <div class="meta" style="color:#44cc44">壁攻勢型</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/chrono_sheet.webp" alt="chrono_sheet"></div>
+          <div class="name">chrono_sheet</div>
+          <div class="label">クロノ</div>
+          <div class="meta" style="color:#aa44ff">持久型</div>
+        </div>
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/striker_sheet.webp" alt="striker_sheet"></div>
+          <div class="name">striker_sheet</div>
+          <div class="label">ストライカー</div>
+          <div class="meta" style="color:#ff4444">攻撃型</div>
+        </div>
+      </div>
+
+      <h3>CPU表情 汎用フォールバック（4段階）</h3>
+      <p>キャラスプライトシート未配置時に使用される汎用画像：</p>
+      <div class="asset-grid">
+        <div class="asset-card" onclick="showModal(this)">
+          <div class="preview"><img src="../assets/images/cpu/cpu_happy.webp" alt="cpu_happy"></div>
           <div class="name">cpu_happy</div>
           <div class="label">HP 70%以上</div>
           <div class="meta" style="color:var(--green)">元気</div>
         </div>
         <div class="asset-card" onclick="showModal(this)">
-          <div class="preview"><img src="../assets/images/cpu/cpu_worried.png" alt="cpu_worried"></div>
+          <div class="preview"><img src="../assets/images/cpu/cpu_worried.webp" alt="cpu_worried"></div>
           <div class="name">cpu_worried</div>
           <div class="label">HP 50〜70%</div>
           <div class="meta" style="color:var(--orange)">不安</div>
         </div>
         <div class="asset-card" onclick="showModal(this)">
-          <div class="preview"><img src="../assets/images/cpu/cpu_scared.png" alt="cpu_scared"></div>
+          <div class="preview"><img src="../assets/images/cpu/cpu_scared.webp" alt="cpu_scared"></div>
           <div class="name">cpu_scared</div>
           <div class="label">HP 25〜50%</div>
           <div class="meta" style="color:var(--fire)">怯え</div>
         </div>
         <div class="asset-card" onclick="showModal(this)">
-          <div class="preview"><img src="../assets/images/cpu/cpu_critical.png" alt="cpu_critical"></div>
+          <div class="preview"><img src="../assets/images/cpu/cpu_critical.webp" alt="cpu_critical"></div>
           <div class="name">cpu_critical</div>
           <div class="label">HP 0〜25%</div>
           <div class="meta" style="color:var(--red)">危機</div>
@@ -1214,8 +1282,9 @@ gameScene.events.on('waveCleared', (d) => this.updateWave(d.wave, d.totalWaves))
       <table>
         <tr><th>ファイル</th><th>依存先</th></tr>
         <tr><td><code>main.js</code></td><td>DefaultData, SaveManager</td></tr>
-        <tr><td><code>GameScene.js</code></td><td>AssetManager, SoundManager, DefaultData, GameData, DIFFICULTY_SETTINGS</td></tr>
+        <tr><td><code>GameScene.js</code></td><td>AssetManager, SoundManager, SaveManager, DefaultData, GameData, DIFFICULTY_SETTINGS, CHARACTER_DATA</td></tr>
         <tr><td><code>UIScene.js</code></td><td>AssetManager, SoundManager, GameScene.events, GAME_CONFIG</td></tr>
+        <tr><td><code>BriefingScene.js</code></td><td>SoundManager, SaveManager, CHARACTER_DATA, DIFFICULTY_SETTINGS</td></tr>
         <tr><td><code>ResultScene.js</code></td><td>AssetManager, SoundManager, SaveManager, RankingManager</td></tr>
         <tr><td><code>RankingScene.js</code></td><td>RankingManager, DefaultData</td></tr>
         <tr><td><code>PreloadScene.js</code></td><td>DefaultData（フォールバック時）</td></tr>
