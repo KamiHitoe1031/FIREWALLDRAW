@@ -218,6 +218,16 @@ class GameScene extends Phaser.Scene {
     // CPUコンテナ
     this.cpuContainer = this.add.container(CPU_X, CPU_Y);
 
+    // キャラクターカラーで枠を描画
+    const characterData = CHARACTER_DATA[charId] || CHARACTER_DATA.standard;
+    const frameColor = characterData.color || 0x00aaff;
+    const cpuFrame = this.add.graphics();
+    cpuFrame.lineStyle(3, frameColor, 0.9);
+    cpuFrame.strokeRoundedRect(-68, -68, 136, 136, 8);
+    cpuFrame.lineStyle(1, 0xffffff, 0.3);
+    cpuFrame.strokeRoundedRect(-70, -70, 140, 140, 10);
+    this.cpuContainer.add(cpuFrame);
+
     if (this.cpuUseSheet) {
       // スプライトシート版CPU（フレーム0 = happy）
       this.cpuSprite = this.add.sprite(0, 0, sheetKey, 0);
