@@ -132,6 +132,10 @@ class PreloadScene extends Phaser.Scene {
     this.load.audio('sfx_button_hover', 'assets/audio/sfx/button_hover.mp3');
     this.load.audio('sfx_new_record', 'assets/audio/sfx/new_record.mp3');
     this.load.audio('sfx_coin_reward', 'assets/audio/sfx/coin_reward.mp3');
+
+    // === BGM ===
+    this.load.audio('bgm_game', 'assets/audio/bgm/bgm_game.mp3');
+    this.load.audio('bgm_title', 'assets/audio/bgm/bgm_title.mp3');
   }
 
   create() {

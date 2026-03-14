@@ -100,8 +100,8 @@ class UIScene extends Phaser.Scene {
     // ポーズボタン
     this.createPauseButton();
 
-    // ミュートボタン
-    this.createMuteButton();
+    // 音量バー
+    this.createVolumeBar();
   }
 
   createPauseButton() {
@@ -130,45 +130,59 @@ class UIScene extends Phaser.Scene {
     });
   }
 
-  createMuteButton() {
-    const x = GAME_CONFIG.WIDTH - 75;
-    const y = 25;
-    const btn = this.add.container(x, y);
+  /**
+   * ゲーム中の簡易音量バー（5本の縦棒、クリックで音量変更）
+   */
+  createVolumeBar() {
+    const baseX = GAME_CONFIG.WIDTH - 95;
+    const baseY = 38;
+    const barCount = 5;
+    const barWidth = 6;
+    const barGap = 3;
 
-    this.muteBg = this.add.graphics();
-    this.muteIcon = this.add.text(0, 0, this.soundManager.isMuted() ? 'M' : 'S', {
-      fontSize: '14px',
-      color: this.soundManager.isMuted() ? '#ff4444' : '#00ff00',
-      fontFamily: 'sans-serif',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+    this.volBarContainer = this.add.container(baseX, baseY);
+    this.volBars = [];
 
-    this.drawMuteButtonBg();
+    // 背景
+    const volBg = this.add.graphics();
+    volBg.fillStyle(0x000000, 0.4);
+    volBg.fillRoundedRect(-4, -24, barCount * (barWidth + barGap) + 5, 28, 4);
+    this.volBarContainer.add(volBg);
 
-    btn.add([this.muteBg, this.muteIcon]);
-    btn.setSize(30, 24);
-    btn.setInteractive({ useHandCursor: true });
+    for (let i = 0; i < barCount; i++) {
+      const x = i * (barWidth + barGap);
+      const height = 6 + i * 4; // 6, 10, 14, 18, 22
+      const bar = this.add.graphics();
+      this.volBarContainer.add(bar);
+      this.volBars.push({ graphics: bar, x, height, level: (i + 1) / barCount });
+    }
 
-    btn.on('pointerdown', () => {
-      const muted = this.soundManager.toggleMute();
-      // GameSceneのSoundManagerも同期
-      const gameScene = this.scene.get('GameScene');
-      if (gameScene && gameScene.soundManager) {
-        gameScene.soundManager.setMuted(muted);
-      }
-      this.muteIcon.setText(muted ? 'M' : 'S');
-      this.muteIcon.setColor(muted ? '#ff4444' : '#00ff00');
-      this.drawMuteButtonBg();
+    // インタラクション用の透明な領域
+    const hitArea = this.add.zone(baseX + 18, baseY - 10, 50, 30);
+    hitArea.setInteractive({ useHandCursor: true });
+
+    hitArea.on('pointerdown', (pointer) => {
+      const localX = pointer.x - baseX;
+      const clickedBar = Math.floor(localX / (barWidth + barGap));
+      const idx = Math.max(0, Math.min(barCount - 1, clickedBar));
+      const newVol = this.volBars[idx].level;
+
+      this.soundManager.play('sfx_button_click');
+      this.syncAllVolume('sfx', newVol);
+      this.drawVolumeBars();
     });
+
+    this.drawVolumeBars();
   }
 
-  drawMuteButtonBg() {
-    this.muteBg.clear();
-    const isMuted = this.soundManager.isMuted();
-    this.muteBg.fillStyle(isMuted ? 0x440000 : 0x004400, 0.8);
-    this.muteBg.lineStyle(1, isMuted ? 0xff4444 : 0x00ff00, 0.8);
-    this.muteBg.fillRoundedRect(-15, -12, 30, 24, 4);
-    this.muteBg.strokeRoundedRect(-15, -12, 30, 24, 4);
+  drawVolumeBars() {
+    const currentVol = this.soundManager.sfxVolume;
+    this.volBars.forEach(bar => {
+      bar.graphics.clear();
+      const active = currentVol >= bar.level - 0.05;
+      bar.graphics.fillStyle(active ? 0x00ff88 : 0x333344, active ? 0.9 : 0.4);
+      bar.graphics.fillRect(bar.x, -bar.height, 6, bar.height);
+    });
   }
 
   togglePause() {
@@ -201,15 +215,22 @@ class UIScene extends Phaser.Scene {
 
     this.pauseOverlay.add([bg, pauseText]);
 
-    // 音量調整
-    this.createVolumeControls(WIDTH / 2, HEIGHT / 2 - 50);
+    // BGM音量調整
+    this.createPauseVolumeRow(WIDTH / 2, HEIGHT / 2 - 60, 'BGM', 'bgm');
+    // 効果音音量調整
+    this.createPauseVolumeRow(WIDTH / 2, HEIGHT / 2 - 20, '効果音', 'sfx');
 
     // 再開ボタン
-    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 10, '再開', 0x00aa00, () => this.togglePause());
+    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 25, '再開', 0x00aa00, () => this.togglePause());
 
     // リトライボタン
-    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 65, 'リトライ', 0x444466, () => {
+    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 80, 'リトライ', 0x444466, () => {
       this.hidePauseOverlay();
+      // リトライ前にBGMを停止（新しいGameSceneで再開される）
+      const gameSceneRetry = this.scene.get('GameScene');
+      if (gameSceneRetry && gameSceneRetry.soundManager) {
+        gameSceneRetry.soundManager.stopBGM();
+      }
       this.scene.stop('GameScene');
       this.scene.stop('UIScene');
       this.scene.start('GameScene', {
@@ -223,20 +244,26 @@ class UIScene extends Phaser.Scene {
     });
 
     // タイトルへボタン
-    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 120, 'タイトルへ', 0x666666, () => {
+    this.createPauseButton2(WIDTH / 2, HEIGHT / 2 + 135, 'タイトルへ', 0x666666, () => {
+      // ゲームBGMを停止
+      const gameScene = this.scene.get('GameScene');
+      if (gameScene && gameScene.soundManager) {
+        gameScene.soundManager.stopBGM();
+      }
       this.scene.stop('GameScene');
       this.scene.stop('UIScene');
       this.scene.start('TitleScene');
     });
   }
 
-  createVolumeControls(centerX, y) {
+  /**
+   * ポーズメニュー用の音量調整行（BGM or SFX）
+   */
+  createPauseVolumeRow(centerX, y, labelText, type) {
     // ラベル
-    const label = this.add.text(centerX, y - 18, '音量', {
-      fontSize: '13px',
-      color: '#aaaaaa',
-      fontFamily: 'sans-serif'
-    }).setOrigin(0.5);
+    const label = this.add.text(centerX - 155, y, labelText, {
+      fontSize: '12px', color: '#8899aa', fontFamily: 'sans-serif'
+    }).setOrigin(0, 0.5);
     this.pauseOverlay.add(label);
 
     // 5段階ボタン
@@ -248,24 +275,31 @@ class UIScene extends Phaser.Scene {
       { label: '100%', value: 1.0 }
     ];
 
-    const btnWidth = 52;
-    const btnHeight = 28;
-    const gap = 6;
-    const totalWidth = levels.length * btnWidth + (levels.length - 1) * gap;
-    const startX = centerX - totalWidth / 2;
+    const btnWidth = 48;
+    const btnHeight = 24;
+    const gap = 5;
+    const rowStartX = centerX - 95;
 
-    this.volumeButtons = [];
+    if (!this.pauseVolumeButtons) this.pauseVolumeButtons = {};
+    this.pauseVolumeButtons[type] = [];
+
+    const currentVol = type === 'bgm' ? this.soundManager.bgmVolume : this.soundManager.sfxVolume;
 
     levels.forEach((level, index) => {
-      const bx = startX + index * (btnWidth + gap) + btnWidth / 2;
+      const bx = rowStartX + index * (btnWidth + gap) + btnWidth / 2;
       const container = this.add.container(bx, y);
 
       const bg = this.add.graphics();
+      const isActive = Math.abs(currentVol - level.value) < 0.05;
+
+      bg.fillStyle(isActive ? 0x00aaff : 0x333344, isActive ? 0.9 : 0.8);
+      bg.lineStyle(isActive ? 2 : 1, isActive ? 0xffffff : 0x556677, isActive ? 1 : 0.6);
+      bg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
+      bg.strokeRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
+
       const text = this.add.text(0, 0, level.label, {
-        fontSize: '11px',
-        color: '#ffffff',
-        fontFamily: 'sans-serif',
-        fontStyle: 'bold'
+        fontSize: '10px', color: isActive ? '#ffffff' : '#aaaaaa',
+        fontFamily: 'sans-serif', fontStyle: 'bold'
       }).setOrigin(0.5);
 
       container.add([bg, text]);
@@ -274,58 +308,47 @@ class UIScene extends Phaser.Scene {
 
       container.on('pointerdown', () => {
         this.soundManager.play('sfx_button_click');
-        this.setGameVolume(level.value);
-      });
-
-      container.on('pointerover', () => {
-        text.setColor('#ffff00');
-      });
-
-      container.on('pointerout', () => {
-        const isActive = Math.abs(this.soundManager.volume - level.value) < 0.05;
-        text.setColor(isActive ? '#ffffff' : '#aaaaaa');
+        this.syncAllVolume(type, level.value);
+        this.refreshPauseVolumeRow(type);
+        if (type === 'sfx') this.drawVolumeBars();
       });
 
       this.pauseOverlay.add(container);
-      this.volumeButtons.push({ container, bg, text, value: level.value });
+      this.pauseVolumeButtons[type].push({ container, bg, text, value: level.value, btnWidth, btnHeight });
     });
-
-    // 初期描画
-    this.updateVolumeButtonStyles();
   }
 
-  updateVolumeButtonStyles() {
-    if (!this.volumeButtons) return;
-    const currentVol = this.soundManager.volume;
+  refreshPauseVolumeRow(type) {
+    if (!this.pauseVolumeButtons || !this.pauseVolumeButtons[type]) return;
+    const currentVol = type === 'bgm' ? this.soundManager.bgmVolume : this.soundManager.sfxVolume;
 
-    this.volumeButtons.forEach(btn => {
+    this.pauseVolumeButtons[type].forEach(btn => {
       const isActive = Math.abs(currentVol - btn.value) < 0.05;
-      const btnWidth = 52;
-      const btnHeight = 28;
-
       btn.bg.clear();
-      if (isActive) {
-        btn.bg.fillStyle(0x00aaff, 0.9);
-        btn.bg.lineStyle(2, 0xffffff, 1);
-      } else {
-        btn.bg.fillStyle(0x333344, 0.8);
-        btn.bg.lineStyle(1, 0x556677, 0.6);
-      }
-      btn.bg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 5);
-      btn.bg.strokeRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 5);
+      btn.bg.fillStyle(isActive ? 0x00aaff : 0x333344, isActive ? 0.9 : 0.8);
+      btn.bg.lineStyle(isActive ? 2 : 1, isActive ? 0xffffff : 0x556677, isActive ? 1 : 0.6);
+      btn.bg.fillRoundedRect(-btn.btnWidth / 2, -btn.btnHeight / 2, btn.btnWidth, btn.btnHeight, 4);
+      btn.bg.strokeRoundedRect(-btn.btnWidth / 2, -btn.btnHeight / 2, btn.btnWidth, btn.btnHeight, 4);
       btn.text.setColor(isActive ? '#ffffff' : '#aaaaaa');
     });
   }
 
-  setGameVolume(vol) {
-    // UIScene側
-    this.soundManager.setVolume(vol);
-    // GameScene側も同期
+  /**
+   * UIScene + GameScene両方のSoundManagerに音量を同期
+   */
+  syncAllVolume(type, vol) {
     const gameScene = this.scene.get('GameScene');
-    if (gameScene && gameScene.soundManager) {
-      gameScene.soundManager.setVolume(vol);
+    if (type === 'bgm') {
+      this.soundManager.setBGMVolume(vol);
+      if (gameScene && gameScene.soundManager) {
+        gameScene.soundManager.setBGMVolume(vol);
+      }
+    } else {
+      this.soundManager.setSFXVolume(vol);
+      if (gameScene && gameScene.soundManager) {
+        gameScene.soundManager.setSFXVolume(vol);
+      }
     }
-    this.updateVolumeButtonStyles();
   }
 
   createPauseButton2(x, y, label, color, onClick) {
@@ -378,7 +401,7 @@ class UIScene extends Phaser.Scene {
       this.pauseOverlay.destroy();
       this.pauseOverlay = null;
     }
-    this.volumeButtons = null;
+    this.pauseVolumeButtons = null;
   }
 
   createBottomUI() {

@@ -87,6 +87,9 @@ class GameScene extends Phaser.Scene {
       this.assetManager = new AssetManager(this);
       this.soundManager = new SoundManager(this);
 
+      // BGM再生
+      this.soundManager.playBGM('bgm_game');
+
       // データ読み込み
       this.enemiesData = this.cache.json.get('enemies') || DEFAULT_DATA.enemies;
       this.wallsData = this.cache.json.get('walls') || DEFAULT_DATA.walls;
@@ -1030,6 +1033,7 @@ class GameScene extends Phaser.Scene {
     }
 
     this.time.delayedCall(1000, () => {
+      this.soundManager.stopBGM();
       this.scene.stop('UIScene');
       this.scene.start('ResultScene', {
         result: 'clear',
@@ -1061,6 +1065,7 @@ class GameScene extends Phaser.Scene {
     }
 
     this.time.delayedCall(1000, () => {
+      this.soundManager.stopBGM();
       this.scene.stop('UIScene');
       this.scene.start('ResultScene', {
         result: 'gameover',

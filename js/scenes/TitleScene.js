@@ -13,6 +13,9 @@ class TitleScene extends Phaser.Scene {
     this.soundManager = new SoundManager(this);
     const { WIDTH, HEIGHT } = GAME_CONFIG;
 
+    // タイトルBGM再生
+    this.soundManager.playBGM('bgm_title');
+
     // 背景
     if (this.textures.exists('bg_title')) {
       this.add.image(WIDTH / 2, HEIGHT / 2, 'bg_title');
@@ -33,10 +36,12 @@ class TitleScene extends Phaser.Scene {
 
     // サブボタン
     this.createSubButton(WIDTH / 2 - 90, HEIGHT / 2 + 130, 'ヘルプ', () => {
+      this.soundManager.stopBGM();
       this.scene.start('HelpScene');
     });
 
     this.createSubButton(WIDTH / 2 + 90, HEIGHT / 2 + 130, 'データ管理', () => {
+      this.soundManager.stopBGM();
       this.scene.start('DataScene');
     });
 
@@ -151,6 +156,7 @@ class TitleScene extends Phaser.Scene {
 
     container.on('pointerdown', () => {
       this.soundManager.play('sfx_button_click');
+      this.soundManager.stopBGM();
       this.scene.start('StageSelectScene', { difficulty });
     });
   }
