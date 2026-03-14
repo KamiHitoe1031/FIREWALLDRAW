@@ -15,6 +15,7 @@ class SaveManager {
       hard: { clearedStages: [], highScores: {} },
       coins: 0,
       unlockedWalls: ["basic"],
+      unlockedCharacters: ["standard"],
       upgrades: { wall_duration: 0, wall_damage: 0, wall_count: 0, cpu_hp: 0 },
       selectedCharacter: 'standard'
     };
@@ -54,6 +55,7 @@ class SaveManager {
         hard: { clearedStages: [], highScores: {} },
         coins: data.coins || 0,
         unlockedWalls: data.unlockedWalls || ["basic"],
+        unlockedCharacters: data.unlockedCharacters || ["standard"],
         upgrades: data.upgrades || defaultSave.upgrades,
         selectedCharacter: data.selectedCharacter || 'standard'
       };
@@ -65,6 +67,7 @@ class SaveManager {
       hard: data.hard || defaultSave.hard,
       coins: data.coins ?? 0,
       unlockedWalls: data.unlockedWalls || ["basic"],
+      unlockedCharacters: data.unlockedCharacters || ["standard"],
       upgrades: data.upgrades || defaultSave.upgrades,
       selectedCharacter: data.selectedCharacter || 'standard'
     };
@@ -205,6 +208,41 @@ class SaveManager {
     const data = this.load();
     data.selectedCharacter = characterId;
     this.save(data);
+  }
+
+  /**
+   * キャラクターがアンロック済みか
+   */
+  static isCharacterUnlocked(characterId) {
+    const data = this.load();
+    return (data.unlockedCharacters || ['standard']).includes(characterId);
+  }
+
+  /**
+   * キャラクターをコインで購入・アンロック
+   * @returns {{ success: boolean, message: string }}
+   */
+  static unlockCharacter(characterId) {
+    const charData = CHARACTER_DATA[characterId];
+    if (!charData) return { success: false, message: '不明なキャラクター' };
+
+    const data = this.load();
+    const unlocked = data.unlockedCharacters || ['standard'];
+
+    if (unlocked.includes(characterId)) {
+      return { success: false, message: '既にアンロック済み' };
+    }
+
+    if (data.coins < charData.unlockCost) {
+      return { success: false, message: 'コインが足りません' };
+    }
+
+    data.coins -= charData.unlockCost;
+    unlocked.push(characterId);
+    data.unlockedCharacters = unlocked;
+    this.save(data);
+
+    return { success: true, message: `${charData.name}をアンロックしました！` };
   }
 }
 

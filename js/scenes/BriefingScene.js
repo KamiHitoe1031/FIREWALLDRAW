@@ -322,72 +322,105 @@ class BriefingScene extends Phaser.Scene {
     const characters = Object.values(CHARACTER_DATA);
     const selectedId = SaveManager.getSelectedCharacter();
 
-    // セクションラベル
+    // セクションラベル + 所持コイン
+    const coins = SaveManager.getCoins();
     this.add.text(60, y, 'キャラクター選択', {
       fontSize: '12px', color: '#8899aa', fontFamily: 'sans-serif'
     });
-    y += 16;
+    this.coinsText = this.add.text(WIDTH - 60, y, `${coins} coins`, {
+      fontSize: '12px', color: '#ffdd00', fontFamily: 'sans-serif'
+    }).setOrigin(1, 0);
+    y += 18;
 
     // キャラカード配置
     const cardWidth = 130;
-    const cardHeight = 50;
+    const cardHeight = 80;
     const gap = 6;
     const totalWidth = characters.length * cardWidth + (characters.length - 1) * gap;
     const startX = (WIDTH - totalWidth) / 2;
 
     this.charCards = [];
+    this.charCardBaseY = y;
 
     characters.forEach((char, index) => {
       const cx = startX + index * (cardWidth + gap) + cardWidth / 2;
       const cy = y + cardHeight / 2;
+      const isUnlocked = SaveManager.isCharacterUnlocked(char.id);
 
-      const card = this.createCharCard(cx, cy, cardWidth, cardHeight, char, char.id === selectedId);
+      const card = this.createCharCard(cx, cy, cardWidth, cardHeight, char, char.id === selectedId, isUnlocked);
       this.charCards.push(card);
     });
 
     return y + cardHeight + 8;
   }
 
-  createCharCard(x, y, w, h, charData, isSelected) {
+  createCharCard(x, y, w, h, charData, isSelected, isUnlocked) {
     const container = this.add.container(x, y);
 
     // 背景
     const bg = this.add.graphics();
-    this.drawCharCardBg(bg, w, h, charData.color, isSelected);
+    this.drawCharCardBg(bg, w, h, charData.color, isSelected, isUnlocked);
+
+    // キャラ画像（スプライトシートのフレーム0 = happy）
+    const sheetKey = `char_${charData.id}`;
+    let charImage = null;
+    if (this.textures.exists(sheetKey)) {
+      charImage = this.add.sprite(0, -10, sheetKey, 0);
+      charImage.setDisplaySize(40, 40);
+      if (!isUnlocked) charImage.setTint(0x333333);
+    } else {
+      // プレースホルダー
+      const ph = this.add.graphics();
+      ph.fillStyle(charData.color, isUnlocked ? 0.5 : 0.2);
+      ph.fillCircle(0, -10, 18);
+      container.add(ph);
+    }
 
     // キャラ名
-    const name = this.add.text(0, -h / 2 + 12, charData.name, {
+    const name = this.add.text(0, 14, charData.name, {
       fontSize: '11px',
-      color: isSelected ? '#ffffff' : '#aabbcc',
+      color: isUnlocked ? (isSelected ? '#ffffff' : '#aabbcc') : '#666677',
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // ステータス修正テキスト
-    const modText = this.getModifierText(charData.modifiers);
-    const modLabel = this.add.text(0, h / 2 - 12, modText, {
-      fontSize: '9px',
-      color: '#aaddcc',
-      fontFamily: 'sans-serif'
-    }).setOrigin(0.5);
+    // ロック時: コスト表示 / アンロック時: ステータス修正
+    let bottomLabel;
+    if (isUnlocked) {
+      const modText = this.getModifierText(charData.modifiers);
+      bottomLabel = this.add.text(0, h / 2 - 10, modText, {
+        fontSize: '9px', color: '#aaddcc', fontFamily: 'sans-serif'
+      }).setOrigin(0.5);
+    } else {
+      bottomLabel = this.add.text(0, h / 2 - 10, `${charData.unlockCost} coins`, {
+        fontSize: '10px', color: '#ffdd00', fontFamily: 'sans-serif', fontStyle: 'bold'
+      }).setOrigin(0.5);
+    }
 
-    container.add([bg, name, modLabel]);
+    const elements = [bg, name, bottomLabel];
+    if (charImage) elements.splice(1, 0, charImage);
+    container.add(elements);
+
     container.setSize(w, h);
     container.setInteractive({ useHandCursor: true });
 
     container.on('pointerdown', () => {
       this.soundManager.play('sfx_button_click');
-      this.selectCharacter(charData.id);
+      if (isUnlocked) {
+        this.selectCharacter(charData.id);
+      } else {
+        this.showUnlockConfirm(charData);
+      }
     });
 
     container.on('pointerover', () => {
-      if (SaveManager.getSelectedCharacter() !== charData.id) {
+      if (isUnlocked && SaveManager.getSelectedCharacter() !== charData.id) {
         name.setColor('#ffffff');
       }
     });
 
     container.on('pointerout', () => {
-      if (SaveManager.getSelectedCharacter() !== charData.id) {
+      if (isUnlocked && SaveManager.getSelectedCharacter() !== charData.id) {
         name.setColor('#aabbcc');
       }
     });
@@ -395,15 +428,21 @@ class BriefingScene extends Phaser.Scene {
     container.charData = charData;
     container.bg = bg;
     container.nameText = name;
+    container.bottomLabel = bottomLabel;
+    container.charImage = charImage;
     container.cardW = w;
     container.cardH = h;
+    container.isUnlocked = isUnlocked;
 
     return container;
   }
 
-  drawCharCardBg(bg, w, h, color, isSelected) {
+  drawCharCardBg(bg, w, h, color, isSelected, isUnlocked) {
     bg.clear();
-    if (isSelected) {
+    if (!isUnlocked) {
+      bg.fillStyle(0x111122, 0.7);
+      bg.lineStyle(1, 0x333344, 0.5);
+    } else if (isSelected) {
       bg.fillStyle(color, 0.6);
       bg.lineStyle(2, 0xffffff, 1);
     } else {
@@ -423,14 +462,164 @@ class BriefingScene extends Phaser.Scene {
     return parts.length === 0 ? 'バランス型' : parts.join(' / ');
   }
 
+  /**
+   * アンロック確認ダイアログ表示
+   */
+  showUnlockConfirm(charData) {
+    if (this.unlockOverlay) return;
+
+    const { WIDTH, HEIGHT } = GAME_CONFIG;
+    const coins = SaveManager.getCoins();
+    const canAfford = coins >= charData.unlockCost;
+
+    this.unlockOverlay = this.add.container(0, 0);
+
+    // 半透明背景
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.75);
+    bg.fillRect(0, 0, WIDTH, HEIGHT);
+    bg.setInteractive(new Phaser.Geom.Rectangle(0, 0, WIDTH, HEIGHT), Phaser.Geom.Rectangle.Contains);
+    this.unlockOverlay.add(bg);
+
+    // ダイアログ枠
+    const dlgW = 320;
+    const dlgH = 200;
+    const dlgX = WIDTH / 2 - dlgW / 2;
+    const dlgY = HEIGHT / 2 - dlgH / 2;
+    const dlg = this.add.graphics();
+    dlg.fillStyle(0x1a1a2e, 0.95);
+    dlg.lineStyle(2, charData.color, 0.8);
+    dlg.fillRoundedRect(dlgX, dlgY, dlgW, dlgH, 10);
+    dlg.strokeRoundedRect(dlgX, dlgY, dlgW, dlgH, 10);
+    this.unlockOverlay.add(dlg);
+
+    // キャラ画像
+    const sheetKey = `char_${charData.id}`;
+    if (this.textures.exists(sheetKey)) {
+      const img = this.add.sprite(WIDTH / 2, dlgY + 50, sheetKey, 0);
+      img.setDisplaySize(56, 56);
+      this.unlockOverlay.add(img);
+    }
+
+    // キャラ名
+    this.unlockOverlay.add(this.add.text(WIDTH / 2, dlgY + 88, charData.name, {
+      fontSize: '16px', color: '#ffffff', fontFamily: 'sans-serif', fontStyle: 'bold'
+    }).setOrigin(0.5));
+
+    // 説明
+    this.unlockOverlay.add(this.add.text(WIDTH / 2, dlgY + 108, charData.description, {
+      fontSize: '11px', color: '#aabbcc', fontFamily: 'sans-serif'
+    }).setOrigin(0.5));
+
+    // コスト表示
+    const costColor = canAfford ? '#ffdd00' : '#ff4444';
+    const costMsg = canAfford
+      ? `${charData.unlockCost} coins で解放する`
+      : `コインが足りません（${coins} / ${charData.unlockCost}）`;
+    this.unlockOverlay.add(this.add.text(WIDTH / 2, dlgY + 135, costMsg, {
+      fontSize: '12px', color: costColor, fontFamily: 'sans-serif'
+    }).setOrigin(0.5));
+
+    // 解放ボタン（コインが足りる場合のみ有効）
+    if (canAfford) {
+      const btnContainer = this.add.container(WIDTH / 2 - 60, dlgY + 168);
+      const btnBg = this.add.graphics();
+      btnBg.fillStyle(0x006600, 1);
+      btnBg.lineStyle(2, 0x00ff44, 0.8);
+      btnBg.fillRoundedRect(-50, -14, 100, 28, 6);
+      btnBg.strokeRoundedRect(-50, -14, 100, 28, 6);
+      const btnText = this.add.text(0, 0, '解放する', {
+        fontSize: '13px', color: '#ffffff', fontFamily: 'sans-serif', fontStyle: 'bold'
+      }).setOrigin(0.5);
+      btnContainer.add([btnBg, btnText]);
+      btnContainer.setSize(100, 28);
+      btnContainer.setInteractive({ useHandCursor: true });
+      btnContainer.on('pointerdown', () => {
+        this.soundManager.play('sfx_coin_reward');
+        const result = SaveManager.unlockCharacter(charData.id);
+        if (result.success) {
+          this.hideUnlockConfirm();
+          this.refreshCharacterCards();
+        }
+      });
+      this.unlockOverlay.add(btnContainer);
+    }
+
+    // キャンセルボタン
+    const cancelX = canAfford ? WIDTH / 2 + 60 : WIDTH / 2;
+    const cancelContainer = this.add.container(cancelX, dlgY + 168);
+    const cancelBg = this.add.graphics();
+    cancelBg.fillStyle(0x333344, 1);
+    cancelBg.lineStyle(1, 0x556677, 0.8);
+    cancelBg.fillRoundedRect(-50, -14, 100, 28, 6);
+    cancelBg.strokeRoundedRect(-50, -14, 100, 28, 6);
+    const cancelText = this.add.text(0, 0, '戻る', {
+      fontSize: '13px', color: '#aabbcc', fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+    cancelContainer.add([cancelBg, cancelText]);
+    cancelContainer.setSize(100, 28);
+    cancelContainer.setInteractive({ useHandCursor: true });
+    cancelContainer.on('pointerdown', () => {
+      this.soundManager.play('sfx_button_click');
+      this.hideUnlockConfirm();
+    });
+    this.unlockOverlay.add(cancelContainer);
+  }
+
+  hideUnlockConfirm() {
+    if (this.unlockOverlay) {
+      this.unlockOverlay.destroy();
+      this.unlockOverlay = null;
+    }
+  }
+
+  /**
+   * アンロック後にカード一覧を再構築
+   */
+  refreshCharacterCards() {
+    const selectedId = SaveManager.getSelectedCharacter();
+    const characters = Object.values(CHARACTER_DATA);
+
+    // 既存カードを破棄
+    this.charCards.forEach(card => card.destroy());
+    this.charCards = [];
+
+    // カード再配置
+    const { WIDTH } = GAME_CONFIG;
+    const cardWidth = 130;
+    const cardHeight = 80;
+    const gap = 6;
+    const totalWidth = characters.length * cardWidth + (characters.length - 1) * gap;
+    const startX = (WIDTH - totalWidth) / 2;
+
+    // charSelectorY はcreateCharacterSelectorで設定されたカードの先頭Y座標を復元
+    const y = this.charCardBaseY;
+
+    characters.forEach((char, index) => {
+      const cx = startX + index * (cardWidth + gap) + cardWidth / 2;
+      const cy = y + cardHeight / 2;
+      const isUnlocked = SaveManager.isCharacterUnlocked(char.id);
+
+      const card = this.createCharCard(cx, cy, cardWidth, cardHeight, char, char.id === selectedId, isUnlocked);
+      this.charCards.push(card);
+    });
+
+    // コイン表示を更新
+    if (this.coinsText) {
+      this.coinsText.setText(`${SaveManager.getCoins()} coins`);
+    }
+  }
+
   selectCharacter(charId) {
     SaveManager.setSelectedCharacter(charId);
 
     // カードのビジュアル更新
     this.charCards.forEach(card => {
       const isSelected = card.charData.id === charId;
-      this.drawCharCardBg(card.bg, card.cardW, card.cardH, card.charData.color, isSelected);
-      card.nameText.setColor(isSelected ? '#ffffff' : '#aabbcc');
+      this.drawCharCardBg(card.bg, card.cardW, card.cardH, card.charData.color, isSelected, card.isUnlocked);
+      if (card.isUnlocked) {
+        card.nameText.setColor(isSelected ? '#ffffff' : '#aabbcc');
+      }
     });
 
     // CPU HP表示を更新

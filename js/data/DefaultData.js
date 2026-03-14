@@ -31,6 +31,7 @@ const CHARACTER_DATA = {
     name: 'スタンダード',
     description: 'バランス型。すべてのステータスが標準値。',
     color: 0x00aaff,
+    unlockCost: 0,
     modifiers: {
       maxWalls: 0,
       wallDuration: 0,
@@ -43,6 +44,7 @@ const CHARACTER_DATA = {
     name: 'フォートレス',
     description: 'CPU HP +3、壁持続 -1秒。耐久型。',
     color: 0x4466aa,
+    unlockCost: 200,
     modifiers: {
       maxWalls: 0,
       wallDuration: -1000,
@@ -55,6 +57,7 @@ const CHARACTER_DATA = {
     name: 'マルチコア',
     description: '同時壁 +1、CPU HP -2。壁攻勢型。',
     color: 0x44cc44,
+    unlockCost: 300,
     modifiers: {
       maxWalls: 1,
       wallDuration: 0,
@@ -67,6 +70,7 @@ const CHARACTER_DATA = {
     name: 'クロノ',
     description: '壁持続 +2.5秒、同時壁 -1。持久型。',
     color: 0xaa44ff,
+    unlockCost: 400,
     modifiers: {
       maxWalls: -1,
       wallDuration: 2500,
@@ -79,6 +83,7 @@ const CHARACTER_DATA = {
     name: 'ストライカー',
     description: '壁ダメ ×1.4、CPU HP -2。攻撃型。',
     color: 0xff4444,
+    unlockCost: 500,
     modifiers: {
       maxWalls: 0,
       wallDuration: 0,
